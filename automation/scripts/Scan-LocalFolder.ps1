@@ -95,6 +95,9 @@ function Get-YamlScalar {
     #   key: 'single-quoted value'
     #   key: unquoted-value
     # Does not support block scalars (| or >) — runner.yaml does not use them.
+    # Limitation: values that themselves contain quote characters, or values
+    # followed by an inline comment (# ...) after the value, are not supported.
+    # runner.yaml must not use those patterns for any field read by this function.
     $pattern = "^\s*${Key}:\s*[`"']?([^`"'#\r\n]+)[`"']?\s*$"
     $match    = [regex]::Match($Content, $pattern, 'Multiline')
     if ($match.Success) { return $match.Groups[1].Value.Trim() }
@@ -116,8 +119,8 @@ $blockPattern = "(?ms)^\s{2}${FolderAlias}:\r?\n((?:\s{4,}[^\r\n]*\r?\n?)*)"
 $blockMatch   = [regex]::Match($configRaw, $blockPattern)
 
 if (-not $blockMatch.Success) {
-    Write-Error "Folder alias '$FolderAlias' is not defined in $ConfigFile. " +
-                "Add it to the approved_folders section before using."
+    Write-Error ("Folder alias '$FolderAlias' is not defined in $ConfigFile. " +
+                 "Add it under the approved_folders section in config/runner.yaml before using.")
     exit 1
 }
 

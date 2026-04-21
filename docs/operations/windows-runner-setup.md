@@ -132,7 +132,10 @@ Set a **System environment variable** for each folder alias you plan to enable:
 | `projects` | `RUNNER_FOLDER_PROJECTS` | General use |
 | `archive` | `RUNNER_FOLDER_ARCHIVE` | General use |
 
-**To set a System environment variable (elevated PowerShell):**
+**To set a System environment variable — requires an elevated PowerShell prompt:**
+
+> Run PowerShell as Administrator before executing these commands.
+> `SetEnvironmentVariable` with `Machine` scope requires administrator rights.
 
 ```powershell
 # Example: set the path for the himmelreich alias
