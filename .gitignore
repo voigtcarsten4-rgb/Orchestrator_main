@@ -1,0 +1,69 @@
+# Operating System
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor and IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.history/
+
+# Environment
+.env
+.env.*
+!.env.example
+*.local
+
+# Node / JavaScript (if any tooling is added)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Python (if any tooling is added)
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Temporary files
+/tmp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Sensitive and private data — never commit
+data/inbox/*
+!data/inbox/.gitkeep
+data/raw/*
+!data/raw/.gitkeep
+data/drafts/*
+!data/drafts/.gitkeep
+
+# Generated outputs — store externally or archive separately
+data/exports/*
+!data/exports/.gitkeep
+assets/generated/*
+!assets/generated/.gitkeep
+assets/briefings/*
+!assets/briefings/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# OS-specific
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
