@@ -1,0 +1,180 @@
+# System Configuration
+# Core system settings, operating parameters, and safety limits.
+# Managed by: Human Operator
+# Last updated: 2026-04-21
+
+version: "1.0"
+
+# ─── System Identity ─────────────────────────────────────────────────────────
+
+system:
+  name: "Orchestrator_main"
+  description: "AI-assisted business operating system — orchestration-first"
+  version: "1.0"
+  status: "active"
+  repository: "voigtcarsten4-rgb/Orchestrator_main"
+  initialized: "2026-04-21"
+
+# ─── Operating Mode ──────────────────────────────────────────────────────────
+
+operating_mode:
+  primary: "draft-first"
+  description: "All outputs are drafts until explicitly approved by human operator"
+  auto_execute: false
+  live_integrations_enabled: false
+  destructive_actions_permitted: false
+
+# ─── Agent Registry ──────────────────────────────────────────────────────────
+
+agents:
+  A-01:
+    name: "Master Orchestrator Agent"
+    status: active
+    definition: "/automation/agents/master-orchestrator.md"
+    prompt: "/automation/prompts/orchestrator/master-orchestrator-prompt.md"
+
+  A-02:
+    name: "Repository and System Agent"
+    status: active
+    definition: "/automation/agents/repository-system-agent.md"
+    prompt: "/automation/prompts/agents/repository-system-agent-prompt.md"
+
+  A-03:
+    name: "Website Extraction Agent"
+    status: active
+    definition: "/automation/agents/website-extraction-agent.md"
+    prompt: "/automation/prompts/agents/website-extraction-agent-prompt.md"
+
+  A-04:
+    name: "Content Structuring Agent"
+    status: active
+    definition: "/automation/agents/content-structuring-agent.md"
+    prompt: "/automation/prompts/agents/content-structuring-agent-prompt.md"
+
+  A-05:
+    name: "App Mapping Agent"
+    status: active
+    definition: "/automation/agents/app-mapping-agent.md"
+    prompt: "/automation/prompts/agents/app-mapping-agent-prompt.md"
+
+  A-06:
+    name: "App Differentiation Agent"
+    status: active
+    definition: "/automation/agents/app-differentiation-agent.md"
+    prompt: "/automation/prompts/agents/app-differentiation-agent-prompt.md"
+
+  A-07:
+    name: "Asset and Image Planning Agent"
+    status: active
+    definition: "/automation/agents/asset-image-planning-agent.md"
+    prompt: "/automation/prompts/agents/asset-image-planning-agent-prompt.md"
+
+  A-08:
+    name: "Content Generation Agent"
+    status: active
+    definition: "/automation/agents/content-generation-agent.md"
+    prompt: "/automation/prompts/agents/content-generation-agent-prompt.md"
+
+  A-09:
+    name: "Email Triage and Drafting Agent"
+    status: active
+    definition: "/automation/agents/email-triage-agent.md"
+    prompt: "/automation/prompts/agents/email-triage-agent-prompt.md"
+
+  A-10:
+    name: "Calendar and Scheduling Agent"
+    status: active
+    definition: "/automation/agents/calendar-scheduling-agent.md"
+    prompt: "/automation/prompts/agents/calendar-scheduling-agent-prompt.md"
+
+  A-11:
+    name: "Daily Briefing and Operations Agent"
+    status: active
+    definition: "/automation/agents/daily-briefing-agent.md"
+    prompt: "/automation/prompts/agents/daily-briefing-agent-prompt.md"
+
+  A-12:
+    name: "LinkedIn and Communication Agent"
+    status: active
+    definition: "/automation/agents/linkedin-communication-agent.md"
+    prompt: "/automation/prompts/agents/linkedin-communication-agent-prompt.md"
+
+  A-13:
+    name: "Business Operations Summary Agent"
+    status: active
+    definition: "/automation/agents/business-operations-agent.md"
+    prompt: "/automation/prompts/agents/business-operations-agent-prompt.md"
+
+  A-14:
+    name: "Desktop and File Hygiene Agent"
+    status: active
+    mode: analysis_only
+    definition: "/automation/agents/desktop-file-hygiene-agent.md"
+    prompt: "/automation/prompts/agents/desktop-file-hygiene-agent-prompt.md"
+
+  A-15:
+    name: "Integration Planning Agent"
+    status: active
+    mode: documentation_only
+    definition: "/automation/agents/integration-planning-agent.md"
+    prompt: "/automation/prompts/agents/integration-planning-agent-prompt.md"
+
+# ─── Workflow Registry ────────────────────────────────────────────────────────
+
+workflows:
+  W-01: { name: "Repository Initialization", file: "/automation/workflows/w-01-repository-initialization.md" }
+  W-02: { name: "Project Intake", file: "/automation/workflows/w-02-project-intake.md" }
+  W-03: { name: "Website Ingestion", file: "/automation/workflows/w-03-website-ingestion.md" }
+  W-04: { name: "Extraction to Structured Data", file: "/automation/workflows/w-04-extraction-to-structured.md" }
+  W-05: { name: "Structured Data to App Mapping", file: "/automation/workflows/w-05-structured-to-app-mapping.md" }
+  W-06: { name: "App Mapping to Differentiation", file: "/automation/workflows/w-06-mapping-to-differentiation.md" }
+  W-07: { name: "Differentiation to Content and Assets", file: "/automation/workflows/w-07-differentiation-to-content.md" }
+  W-08: { name: "Daily Operations Briefing", file: "/automation/workflows/w-08-daily-briefing.md" }
+  W-09: { name: "Email to Calendar and Follow-up", file: "/automation/workflows/w-09-email-to-calendar.md" }
+  W-10: { name: "Communication Draft Preparation", file: "/automation/workflows/w-10-communication-draft.md" }
+  W-11: { name: "Desktop and File Intake Review", file: "/automation/workflows/w-11-desktop-file-review.md" }
+  W-12: { name: "Report Generation and Approval", file: "/automation/workflows/w-12-report-generation.md" }
+
+# ─── Data Paths ───────────────────────────────────────────────────────────────
+
+data_paths:
+  inbox: "/data/inbox/"
+  raw: "/data/raw/"
+  extracted: "/data/extracted/"
+  mapped: "/data/mapped/"
+  normalized: "/data/normalized/"
+  drafts: "/data/drafts/"
+  exports: "/data/exports/"
+  reports: "/data/reports/"
+  reference: "/data/reference/"
+  briefings: "/assets/briefings/"
+  handoffs: "/automation/handoffs/"
+
+# ─── Safety Limits ────────────────────────────────────────────────────────────
+
+safety_limits:
+  max_pages_per_extraction: 200
+  max_emails_per_batch: 100
+  max_files_per_hygiene_analysis: 500
+  briefing_carryover_days: 7
+  approval_overdue_threshold_hours: 48
+  workflow_blocked_alert_threshold_hours: 24
+
+# ─── Confidence Thresholds ────────────────────────────────────────────────────
+
+confidence_thresholds:
+  minimum_for_auto_proceed: 0.9
+  below_this_escalate: 0.6
+  description: >
+    If agent confidence in an output falls below 0.6, it must escalate to human.
+    Auto-proceed to next workflow step requires >= 0.9 confidence on all items.
+
+# ─── Governance References ────────────────────────────────────────────────────
+
+governance:
+  main: "/docs/governance/automation-governance.md"
+  approvals: "/docs/governance/approval-model.md"
+  routing: "/config/routing.yaml"
+  triggers: "/config/triggers.yaml"
+  approvals_config: "/config/approvals.yaml"
+  copilot_instructions: "/.github/copilot-instructions.md"
