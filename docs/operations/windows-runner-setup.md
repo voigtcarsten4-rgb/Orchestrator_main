@@ -121,20 +121,31 @@ runner machine. This keeps paths out of the repository.
 
 Set a **System environment variable** for each folder alias you plan to enable:
 
-| Alias in `config/runner.yaml` | Environment variable | Example value |
-|-------------------------------|----------------------|---------------|
-| `desktop` | `RUNNER_FOLDER_DESKTOP` | `C:\Users\<username>\Desktop` |
-| `documents` | `RUNNER_FOLDER_DOCUMENTS` | `C:\Users\<username>\Documents` |
-| `downloads` | `RUNNER_FOLDER_DOWNLOADS` | `C:\Users\<username>\Downloads` |
-| `projects` | `RUNNER_FOLDER_PROJECTS` | `C:\Users\<username>\Projects` |
-| `archive` | `RUNNER_FOLDER_ARCHIVE` | `D:\Archive` |
+| Alias | Environment variable | Notes |
+|-------|----------------------|-------|
+| `himmelreich` | `HIMMELREICH_PATH` | Primary operational alias |
+| `downloads` | `DOWNLOADS_PATH` | Primary operational alias |
+| `wavebyte_app` | `WAVEBYTE_APP_PATH` | Future use — not yet active |
+| `wavebyte_website` | `WAVEBYTE_WEBSITE_PATH` | Future use — not yet active |
+| `desktop` | `RUNNER_FOLDER_DESKTOP` | General use |
+| `documents` | `RUNNER_FOLDER_DOCUMENTS` | General use |
+| `projects` | `RUNNER_FOLDER_PROJECTS` | General use |
+| `archive` | `RUNNER_FOLDER_ARCHIVE` | General use |
 
 **To set a System environment variable (elevated PowerShell):**
 
 ```powershell
+# Example: set the path for the himmelreich alias
 [System.Environment]::SetEnvironmentVariable(
-  "RUNNER_FOLDER_DESKTOP",
-  "C:\Users\<username>\Desktop",
+  "HIMMELREICH_PATH",
+  "C:\<real-path-to-himmelreich-folder>",
+  [System.EnvironmentVariableTarget]::Machine
+)
+
+# Example: set the path for the downloads alias
+[System.Environment]::SetEnvironmentVariable(
+  "DOWNLOADS_PATH",
+  "C:\Users\<username>\Downloads",
   [System.EnvironmentVariableTarget]::Machine
 )
 ```

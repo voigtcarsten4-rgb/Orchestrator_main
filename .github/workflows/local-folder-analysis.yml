@@ -28,7 +28,10 @@ on:
         description: >
           Alias of the approved folder to scan.
           Must match an alias defined in config/runner.yaml with enabled: true.
-          Examples: desktop, documents, downloads
+          Primary aliases: himmelreich, downloads.
+          Other available aliases: desktop, documents, projects, archive, wavebyte_app, wavebyte_website.
+          An alias must be enabled in config/runner.yaml AND its env var must be
+          set on the runner machine before it can be used.
         required: true
         type: string
       scan_depth:

@@ -47,6 +47,43 @@ runner:
 
 approved_folders:
 
+  # ── Primary operational aliases ───────────────────────────────────────────
+  # These are the first aliases intended for real use.
+  # Set enabled: true here AND set the matching env var on the runner machine
+  # before running the local-folder-analysis workflow.
+
+  himmelreich:
+    alias: "himmelreich"
+    env_var: "HIMMELREICH_PATH"
+    description: "Himmelreich project folder"
+    enabled: false
+    # To activate: set HIMMELREICH_PATH on the runner machine, then set enabled: true here.
+
+  downloads:
+    alias: "downloads"
+    env_var: "DOWNLOADS_PATH"
+    description: "Downloads folder"
+    enabled: false
+    # To activate: set DOWNLOADS_PATH on the runner machine, then set enabled: true here.
+
+  # ── Future optional aliases ───────────────────────────────────────────────
+  # Placeholders only — not yet in active use.
+  # Do not enable without operator review and path configuration on the runner.
+
+  wavebyte_app:
+    alias: "wavebyte_app"
+    env_var: "WAVEBYTE_APP_PATH"
+    description: "Wavebyte app source folder (future use)"
+    enabled: false
+
+  wavebyte_website:
+    alias: "wavebyte_website"
+    env_var: "WAVEBYTE_WEBSITE_PATH"
+    description: "Wavebyte website source folder (future use)"
+    enabled: false
+
+  # ── General-purpose aliases ───────────────────────────────────────────────
+
   desktop:
     alias: "desktop"
     env_var: "RUNNER_FOLDER_DESKTOP"
@@ -57,12 +94,6 @@ approved_folders:
     alias: "documents"
     env_var: "RUNNER_FOLDER_DOCUMENTS"
     description: "Operator Documents folder"
-    enabled: false
-
-  downloads:
-    alias: "downloads"
-    env_var: "RUNNER_FOLDER_DOWNLOADS"
-    description: "Downloads folder"
     enabled: false
 
   projects:
