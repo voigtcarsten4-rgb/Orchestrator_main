@@ -12,7 +12,7 @@
 This guide describes how to register a Windows machine as a GitHub Actions
 self-hosted runner for the `Orchestrator_main` repository. Once registered and
 configured, the runner enables the
-[Local Folder Analysis workflow](./../.github/workflows/local-folder-analysis.yml)
+[Local Folder Analysis workflow](../../.github/workflows/local-folder-analysis.yml)
 to generate read-only file listings from approved local folders.
 
 The runner is used exclusively by Workflow W-11 (Desktop and File Intake Review)

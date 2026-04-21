@@ -90,6 +90,11 @@ function Get-YamlScalar {
         Works without an external YAML module.
     #>
     param([string] $Content, [string] $Key)
+    # Supports YAML scalars in three forms used in runner.yaml:
+    #   key: "double-quoted value"
+    #   key: 'single-quoted value'
+    #   key: unquoted-value
+    # Does not support block scalars (| or >) — runner.yaml does not use them.
     $pattern = "^\s*${Key}:\s*[`"']?([^`"'#\r\n]+)[`"']?\s*$"
     $match    = [regex]::Match($Content, $pattern, 'Multiline')
     if ($match.Success) { return $match.Groups[1].Value.Trim() }
@@ -260,7 +265,7 @@ if ($truncated) {
 
 $i = 1
 foreach ($item in $items) {
-    $indent = '·· ' * ($item.Depth - 1)
+    $indent = '  ' * ($item.Depth - 1)
     [void]$sb.AppendLine("| $i | $($item.Depth) | ${indent}$($item.Name) | $($item.Kind) | $($item.Extension) | $($item.SizeKB) | $($item.LastModified) | $($item.RelativePath) |")
     $i++
 }
