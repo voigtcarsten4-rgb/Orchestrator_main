@@ -1,0 +1,97 @@
+# Runner Configuration
+# Defines the Windows self-hosted runner settings and the list of approved
+# local folders that may be scanned by the local-folder-analysis workflow.
+#
+# Managed by: Human Operator
+# Last updated: 2026-04-21
+#
+# ─── SECURITY RULES ──────────────────────────────────────────────────────────
+# 1. Never store real folder paths in this file.
+#    Actual paths are configured as environment variables on the runner machine.
+#    Environment variable format: RUNNER_FOLDER_<ALIAS_UPPERCASE>
+#    Example: RUNNER_FOLDER_DESKTOP = C:\Users\<username>\Desktop
+#
+# 2. A folder alias must have enabled: true before it can be scanned.
+#    Set enabled: false for any folder that is not currently in active use.
+#
+# 3. This file is committed to the repository.
+#    It must never contain usernames, real paths, credentials, or any
+#    personally identifiable information.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: "1.0"
+
+# ─── Runner Identity ──────────────────────────────────────────────────────────
+
+runner:
+  name: "windows-local-analysis"
+  description: "Windows self-hosted runner for read-only local folder analysis (W-11)"
+  os: "Windows"
+  labels:
+    - self-hosted
+    - Windows
+    - local-analysis
+  setup_guide: "/docs/operations/windows-runner-setup.md"
+
+# ─── Approved Folders ─────────────────────────────────────────────────────────
+# Each entry defines one folder alias that the scan workflow may target.
+#
+# Fields:
+#   alias       — The short name passed as the folder_alias workflow input.
+#   env_var     — Environment variable on the runner that holds the real path.
+#                 Set this on the runner machine, not in this file.
+#   description — Human-readable description of what this folder contains.
+#   enabled     — Must be true for the alias to be accepted by the scan script.
+#                 Default: false (operator must explicitly enable each folder).
+
+approved_folders:
+
+  desktop:
+    alias: "desktop"
+    env_var: "RUNNER_FOLDER_DESKTOP"
+    description: "Operator desktop — general working files"
+    enabled: false
+
+  documents:
+    alias: "documents"
+    env_var: "RUNNER_FOLDER_DOCUMENTS"
+    description: "Operator Documents folder"
+    enabled: false
+
+  downloads:
+    alias: "downloads"
+    env_var: "RUNNER_FOLDER_DOWNLOADS"
+    description: "Downloads folder"
+    enabled: false
+
+  projects:
+    alias: "projects"
+    env_var: "RUNNER_FOLDER_PROJECTS"
+    description: "Active projects root folder"
+    enabled: false
+
+  archive:
+    alias: "archive"
+    env_var: "RUNNER_FOLDER_ARCHIVE"
+    description: "Long-term archive folder"
+    enabled: false
+
+# ─── Scan Limits ──────────────────────────────────────────────────────────────
+# These match the safety limits in config/system.yaml where applicable.
+
+scan_limits:
+  max_depth: 5                   # Absolute maximum scan depth (workflow input is also capped at 5)
+  max_files_per_scan: 500        # Matches system.yaml: max_files_per_hygiene_analysis
+  include_hidden_files: false    # Do not include hidden files (dot-files, system files)
+  follow_symlinks: false         # Do not follow symbolic links
+
+# ─── Safety Constraints ───────────────────────────────────────────────────────
+# These are documented constraints — enforced by Scan-LocalFolder.ps1.
+
+safety:
+  read_only: true           # Script never writes, moves, or deletes any scanned file
+  no_file_content: true     # Only file metadata is captured — file contents are never read
+  no_auto_delete: true      # File deletion is always BLOCKED (see approvals.yaml)
+  no_auto_move: true        # File moves are always BLOCKED (see approvals.yaml)
+  output_mode: draft_only   # All scan output is DRAFT — human review required before any action

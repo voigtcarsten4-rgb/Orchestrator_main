@@ -45,6 +45,13 @@ build/
 # Sensitive and private data — never commit
 data/inbox/*
 !data/inbox/.gitkeep
+
+# Runner local configuration — never commit
+# Folder paths and any machine-specific settings go in env vars, not these files
+runner.env
+runner.env.*
+.runner
+_diag/
 data/raw/*
 !data/raw/.gitkeep
 data/drafts/*

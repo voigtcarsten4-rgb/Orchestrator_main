@@ -1,0 +1,138 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Workflow: Local Folder Analysis (W-11)
+# ─────────────────────────────────────────────────────────────────────────────
+# Purpose:
+#   Runs on the operator's Windows self-hosted runner to produce a read-only
+#   file-listing draft for an approved local folder. The output surfaces in
+#   /data/inbox/ and feeds into W-11 (Desktop and File Intake Review).
+#
+# Safety:
+#   - Human-initiated only (workflow_dispatch)
+#   - Read-only scan — no files are moved, deleted, or modified
+#   - Only folder aliases listed in config/runner.yaml are accepted
+#   - Actual folder paths are stored as environment variables on the runner
+#     machine and are never committed to this repository
+#   - All output is DRAFT — no automatic action is taken
+#   - Approval gate: W-11 Step 7 (BLOCKED level per approvals.yaml)
+#
+# Trigger: T-01-05 (Human provides a file listing for hygiene analysis)
+# Agent:   A-14 (Desktop and File Hygiene Agent)
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: "Local Folder Analysis (W-11)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      folder_alias:
+        description: >
+          Alias of the approved folder to scan.
+          Must match an alias defined in config/runner.yaml with enabled: true.
+          Examples: desktop, documents, downloads
+        required: true
+        type: string
+      scan_depth:
+        description: >
+          Maximum folder depth to scan (1 = top level only, max 5).
+          Shallower scans are faster; deeper scans may approach the file limit.
+        required: false
+        default: "3"
+        type: string
+      run_notes:
+        description: >
+          Optional human notes to include in the scan output (e.g. reason for
+          this scan, project context). Plain text, one line.
+        required: false
+        default: ""
+        type: string
+
+# ─── Permissions ─────────────────────────────────────────────────────────────
+# Minimal permissions: read repository contents only.
+permissions:
+  contents: read
+
+jobs:
+  folder-scan:
+    name: "Scan Approved Folder"
+    # Requires a self-hosted Windows runner with the 'local-analysis' label.
+    # See docs/operations/windows-runner-setup.md for registration instructions.
+    runs-on: [self-hosted, Windows, local-analysis]
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Validate inputs ───────────────────────────────────────────────────
+      - name: Validate inputs
+        shell: pwsh
+        run: |
+          $alias = "${{ inputs.folder_alias }}".Trim()
+          $depth = "${{ inputs.scan_depth }}".Trim()
+
+          if ([string]::IsNullOrWhiteSpace($alias)) {
+            Write-Error "folder_alias input is empty."
+            exit 1
+          }
+          # Allow only alphanumeric + hyphen/underscore to prevent path traversal
+          if ($alias -notmatch '^[a-zA-Z0-9_-]+$') {
+            Write-Error "folder_alias '$alias' contains invalid characters. Use only letters, numbers, hyphens, and underscores."
+            exit 1
+          }
+          if ($depth -notmatch '^\d+$' -or [int]$depth -lt 1 -or [int]$depth -gt 5) {
+            Write-Error "scan_depth must be an integer between 1 and 5. Got: '$depth'"
+            exit 1
+          }
+          Write-Output "Input validation passed — alias: '$alias', depth: $depth"
+
+      # ── 3. Run read-only folder scan ─────────────────────────────────────────
+      - name: Run folder scan
+        shell: pwsh
+        run: |
+          $params = @{
+            FolderAlias = "${{ inputs.folder_alias }}".Trim()
+            MaxDepth    = [int]"${{ inputs.scan_depth }}"
+            OutputDir   = "$env:GITHUB_WORKSPACE\data\inbox"
+            ConfigFile  = "$env:GITHUB_WORKSPACE\config\runner.yaml"
+            RunNotes    = "${{ inputs.run_notes }}"
+            RunId       = "$env:GITHUB_RUN_ID"
+          }
+          & "$env:GITHUB_WORKSPACE\automation\scripts\Scan-LocalFolder.ps1" @params
+
+      # ── 4. Upload scan output as workflow artifact ───────────────────────────
+      # The scan file is also written to data/inbox/ on the runner's local disk.
+      # The artifact copy lets the operator retrieve it via the GitHub UI without
+      # needing direct access to the runner machine.
+      - name: Upload scan output as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "folder-scan-${{ inputs.folder_alias }}-${{ github.run_id }}"
+          path: "data/inbox/scan-*.md"
+          retention-days: 7
+          if-no-files-found: error
+
+      # ── 5. Summary ───────────────────────────────────────────────────────────
+      - name: Write job summary
+        shell: pwsh
+        run: |
+          $summary = @"
+          ## Local Folder Analysis — Run Summary
+
+          | Field | Value |
+          |-------|-------|
+          | Workflow | W-11 Desktop and File Intake Review |
+          | Agent | A-14 Desktop and File Hygiene Agent |
+          | Folder alias | ${{ inputs.folder_alias }} |
+          | Scan depth | ${{ inputs.scan_depth }} |
+          | Run ID | ${{ github.run_id }} |
+          | Triggered by | ${{ github.actor }} |
+          | Status | **DRAFT — human review required** |
+
+          ### Next Steps
+
+          1. Download the scan artifact above.
+          2. Place the file in `data/inbox/` on your local repo checkout if not already there.
+          3. Follow W-11 steps 2–7 in `automation/workflows/w-11-desktop-file-review.md`.
+          4. Every file action requires individual human approval (W-11 approval level: **BLOCKED**).
+          "@
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
