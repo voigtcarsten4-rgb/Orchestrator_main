@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Task",
+  "description": "Schema for a single task object in the Orchestrator_main task system.",
+  "type": "object",
+  "required": ["task_id", "title", "type", "priority", "status", "assigned_agent", "created_at"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "Unique identifier for the task. Format: T-YYYY-MM-DD-NNN",
+      "pattern": "^T-\\d{4}-\\d{2}-\\d{2}-\\d{3}$",
+      "examples": ["T-2026-04-21-001"]
+    },
+    "title": {
+      "type": "string",
+      "description": "Short human-readable title for the task.",
+      "minLength": 3,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of what the task requires.",
+      "minLength": 10
+    },
+    "type": {
+      "type": "string",
+      "description": "Category of the task.",
+      "enum": [
+        "email",
+        "calendar",
+        "content",
+        "analysis",
+        "automation",
+        "app",
+        "website",
+        "report",
+        "communication",
+        "file_hygiene",
+        "integration",
+        "project_intake",
+        "system"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "description": "Execution priority of the task.",
+      "enum": ["critical", "high", "normal", "low"]
+    },
+    "status": {
+      "type": "string",
+      "description": "Current lifecycle status of the task.",
+      "enum": [
+        "pending",
+        "queued",
+        "in_progress",
+        "awaiting_approval",
+        "blocked",
+        "complete",
+        "escalated",
+        "cancelled"
+      ]
+    },
+    "assigned_agent": {
+      "type": "string",
+      "description": "ID of the agent responsible for executing this task.",
+      "pattern": "^A-\\d{2}$",
+      "examples": ["A-09", "A-11"]
+    },
+    "workflow_id": {
+      "type": "string",
+      "description": "ID of the workflow this task belongs to, if applicable.",
+      "pattern": "^W-\\d{2}$",
+      "examples": ["W-08", "W-09"]
+    },
+    "workflow_step": {
+      "type": "integer",
+      "description": "Step number within the workflow, if applicable.",
+      "minimum": 1
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "List of task IDs that must be complete before this task can begin.",
+      "items": {
+        "type": "string",
+        "pattern": "^T-\\d{4}-\\d{2}-\\d{2}-\\d{3}$"
+      },
+      "uniqueItems": true
+    },
+    "input_path": {
+      "type": "string",
+      "description": "Path to the input data file or folder for this task.",
+      "examples": ["/data/inbox/email/2026-04-21-email-batch.md"]
+    },
+    "output_path": {
+      "type": "string",
+      "description": "Expected path where the agent should write its output.",
+      "examples": ["/data/drafts/2026-04-21-email-triage.md"]
+    },
+    "approval_required": {
+      "type": "boolean",
+      "description": "Whether human approval is required before the task can proceed or its output can be promoted.",
+      "default": false
+    },
+    "approval_status": {
+      "type": "string",
+      "description": "Current state of the approval requirement.",
+      "enum": ["not_required", "pending", "approved", "rejected"],
+      "default": "not_required"
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "Name or identifier of the human who approved this task.",
+      "examples": ["human_operator"]
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Project this task is associated with, if applicable.",
+      "examples": ["wave-bite-2026", "himmelreich-2026"]
+    },
+    "tags": {
+      "type": "array",
+      "description": "Optional labels for filtering, search, and grouping.",
+      "items": {
+        "type": "string"
+      },
+      "examples": [["email", "wave-bite"], ["briefing", "daily"]]
+    },
+    "created_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the task was created.",
+      "format": "date-time",
+      "examples": ["2026-04-21T08:00:00Z"]
+    },
+    "updated_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the task was last updated.",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the task reached complete status.",
+      "format": "date-time"
+    },
+    "deadline": {
+      "type": "string",
+      "description": "ISO 8601 date or datetime by which the task should be completed.",
+      "format": "date-time",
+      "examples": ["2026-04-21T17:00:00Z"]
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-text notes, context, or operator comments for this task."
+    },
+    "escalation_reason": {
+      "type": "string",
+      "description": "If status is escalated, the reason for escalation."
+    },
+    "confidence_required": {
+      "type": "number",
+      "description": "Minimum agent confidence score required to auto-proceed. Default 0.9.",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.9
+    }
+  },
+  "additionalProperties": false
+}
