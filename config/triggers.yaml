@@ -1,0 +1,193 @@
+# Trigger Configuration
+# Defines all event triggers that activate agents and workflows.
+# Managed by: Master Orchestrator Agent (A-01)
+# Last updated: 2026-04-21
+# NOTE: Scheduled triggers are DISABLED until explicitly enabled by human operator.
+
+version: "1.0"
+
+# ─── Trigger Categories ─────────────────────────────────────────────────────
+
+# T-01: Human-Initiated Triggers (always active)
+# T-02: Event-Driven Triggers (active when conditions are met)
+# T-03: Schedule Triggers (DISABLED by default — require explicit enablement)
+# T-04: Chained Workflow Triggers (auto-activate on approved predecessor completion)
+
+# ─── T-01: Human-Initiated Triggers ────────────────────────────────────────
+
+human_triggers:
+  new_project:
+    id: T-01-01
+    description: "Human initiates a new project or client engagement"
+    activates: W-02
+    input_required: project_brief
+    enabled: true
+
+  website_url_provided:
+    id: T-01-02
+    description: "Human provides a website URL for extraction"
+    activates: W-03
+    input_required: approved_url_list
+    requires_approval: true
+    enabled: true
+
+  email_batch_provided:
+    id: T-01-03
+    description: "Human provides an email batch file for triage"
+    activates: W-09
+    input_required: email_batch_file
+    enabled: true
+
+  communication_draft_requested:
+    id: T-01-04
+    description: "Human requests a LinkedIn post or business communication draft"
+    activates: W-10
+    input_required: topic_brief_or_content_source
+    enabled: true
+
+  file_listing_provided:
+    id: T-01-05
+    description: "Human provides a file listing for hygiene analysis"
+    activates: W-11
+    input_required: file_listing
+    enabled: true
+
+  report_requested:
+    id: T-01-06
+    description: "Human requests a business operations report"
+    activates: W-12
+    input_required: reporting_scope
+    enabled: true
+
+  briefing_requested:
+    id: T-01-07
+    description: "Human manually requests a daily briefing compilation"
+    activates: W-08
+    enabled: true
+
+  health_check_requested:
+    id: T-01-08
+    description: "Human requests a repository health check"
+    activates: W-01
+    agent: A-02
+    enabled: true
+
+  integration_planning_requested:
+    id: T-01-09
+    description: "Human requests integration planning for a specific service"
+    activates: A-15
+    input_required: service_name_and_use_case
+    enabled: true
+
+# ─── T-02: Event-Driven Triggers ───────────────────────────────────────────
+
+event_triggers:
+  repository_initialized:
+    id: T-02-01
+    description: "Repository is first created or re-initialized"
+    activates: W-01
+    enabled: true
+
+  new_agent_added:
+    id: T-02-02
+    description: "A new agent definition file is added to /automation/agents/"
+    activates: W-01
+    agent: A-02
+    description_detail: "Triggers a repository health check to verify cross-references"
+    enabled: true
+
+  new_workflow_added:
+    id: T-02-03
+    description: "A new workflow definition file is added to /automation/workflows/"
+    activates: W-01
+    agent: A-02
+    enabled: true
+
+  inbox_file_received:
+    id: T-02-04
+    description: "A new file appears in /data/inbox/"
+    action: surface_in_next_briefing
+    agent: A-11
+    enabled: true
+    note: "Does not auto-process — surfaces in next briefing for human decision"
+
+# ─── T-03: Schedule Triggers ───────────────────────────────────────────────
+# ALL DISABLED BY DEFAULT — human must explicitly enable each trigger
+
+schedule_triggers:
+  morning_briefing:
+    id: T-03-01
+    description: "Compile daily operations briefing"
+    activates: W-08
+    schedule: "weekdays at 07:30 local time"
+    enabled: false
+    enable_instruction: "Set enabled: true and confirm schedule after system initialization"
+
+  weekly_health_check:
+    id: T-03-02
+    description: "Run repository health check"
+    activates: W-01
+    agent: A-02
+    schedule: "every Monday at 09:00 local time"
+    enabled: false
+
+  weekly_operations_report:
+    id: T-03-03
+    description: "Generate weekly operations summary"
+    activates: W-12
+    agent: A-13
+    schedule: "every Friday at 17:00 local time"
+    enabled: false
+
+  monthly_operations_report:
+    id: T-03-04
+    description: "Generate monthly operations summary"
+    activates: W-12
+    agent: A-13
+    schedule: "last working day of each month"
+    enabled: false
+
+  scheduled_email_review:
+    id: T-03-05
+    description: "Process email inbox batch"
+    activates: W-09
+    agent: A-09
+    schedule: "weekdays at 09:00 local time"
+    enabled: false
+    note: "Requires email integration to be approved and activated first"
+
+# ─── T-04: Chained Workflow Triggers ───────────────────────────────────────
+# These activate automatically when a predecessor workflow is approved.
+# The approval gate must be passed first — these never auto-activate without approval.
+
+chained_triggers:
+  w03_to_w04:
+    id: T-04-01
+    activates: W-04
+    when: "W-03 complete AND human approval recorded"
+    enabled: true
+
+  w04_to_w05:
+    id: T-04-02
+    activates: W-05
+    when: "W-04 complete AND human approval recorded"
+    enabled: true
+
+  w05_to_w06:
+    id: T-04-03
+    activates: W-06
+    when: "W-05 complete AND human approval recorded"
+    enabled: true
+
+  w06_to_w07:
+    id: T-04-04
+    activates: W-07
+    when: "W-06 complete AND human approval recorded (elevated gate)"
+    enabled: true
+
+  a09_to_a10:
+    id: T-04-05
+    description: "Email triage scheduling handoff triggers calendar processing"
+    activates: A-10
+    when: "A-09 produces scheduling handoff file"
+    enabled: true

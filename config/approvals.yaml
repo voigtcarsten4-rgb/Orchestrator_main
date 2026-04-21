@@ -1,0 +1,159 @@
+# Approvals Configuration
+# Defines approval requirements for all agent outputs, workflow gates, and system actions.
+# Managed by: Human Operator + Master Orchestrator Agent (A-01)
+# Last updated: 2026-04-21
+
+version: "1.0"
+
+# ─── Approval Categories ─────────────────────────────────────────────────────
+#
+# AUTO:      No human approval required — agent may proceed automatically
+# DRAFT:     Output is created but cannot be used/acted on without human review
+# GATE:      Workflow pauses — human must explicitly approve to proceed
+# ELEVATED:  Significant decision — requires deliberate human sign-off, not just a review
+# BLOCKED:   Action is never permitted autonomously — human must initiate
+
+# ─── Workflow Approval Gates ─────────────────────────────────────────────────
+
+workflow_gates:
+  W-01_completion:
+    level: GATE
+    description: "Human confirms repository initialization is complete"
+    required_before: "Any other workflow begins"
+
+  W-03_raw_extraction:
+    level: GATE
+    description: "Human reviews raw extraction output before structuring begins"
+    required_before: W-04
+    what_to_review:
+      - Extraction completeness
+      - Access issues or missing sections
+      - Scope confirmation
+
+  W-04_structured_content:
+    level: GATE
+    description: "Human reviews structured content before app mapping begins"
+    required_before: W-05
+    what_to_review:
+      - Classification accuracy
+      - Flagged uncertainties resolved or accepted
+      - Content completeness
+
+  W-05_app_mapping:
+    level: GATE
+    description: "Human reviews app map and gap analysis before differentiation begins"
+    required_before: W-06
+    what_to_review:
+      - Screen structure and content assignments
+      - Data schema accuracy
+      - Gap analysis items
+
+  W-06_differentiation_plan:
+    level: ELEVATED
+    description: "Human explicitly approves differentiation plan — affects downstream app structure"
+    required_before: W-07
+    what_to_review:
+      - All per-screen changes
+      - Variant summary and audience definition
+      - Any items flagged as [CONFLICT] or [UNCERTAIN]
+    note: "This is an elevated gate — human must make an active decision, not just review"
+
+  W-07_content_and_assets:
+    level: GATE
+    description: "Human reviews all content drafts and asset briefs before any use"
+    required_before: "Export or downstream use"
+    what_to_review:
+      - All copy drafts
+      - All asset briefs
+      - All CTAs and FAQs
+      - Alt text review
+
+  W-09_email_and_calendar:
+    level: GATE
+    description: "Human reviews and approves every reply draft and calendar event individually"
+    note: "No batch approval — every email reply and calendar action requires individual human approval"
+
+  W-10_communication_drafts:
+    level: GATE
+    description: "Human reviews all communication drafts before any publication or sending"
+    what_to_verify:
+      - All [VERIFY BEFORE PUBLISHING] flags resolved
+      - All [REQUIRES HUMAN DECISION] flags resolved
+
+  W-11_file_operations:
+    level: BLOCKED
+    description: "No file operation may proceed without explicit per-item human confirmation"
+    note: "W-11 is analysis-only. Every file action requires individual human approval."
+
+  W-12_external_distribution:
+    level: ELEVATED
+    description: "Reports for external distribution require elevated human approval before sharing"
+
+# ─── Output-Level Approvals ───────────────────────────────────────────────────
+
+output_approvals:
+  draft_storage:
+    level: AUTO
+    description: "Saving a draft to /data/drafts/ does not require approval"
+
+  report_creation:
+    level: AUTO
+    description: "Creating a report draft does not require approval"
+
+  export_promotion:
+    level: GATE
+    description: "Promoting any draft to /data/exports/ requires human approval"
+    applies_to: all_draft_types
+
+  external_send_or_publish:
+    level: BLOCKED
+    description: "No draft may be sent, posted, or published without human initiation"
+    applies_to:
+      - email_drafts
+      - linkedin_drafts
+      - business_communications
+      - calendar_events
+
+# ─── System-Level Approvals ───────────────────────────────────────────────────
+
+system_approvals:
+  schedule_trigger_enablement:
+    level: GATE
+    description: "Every scheduled trigger must be explicitly enabled by human before first run"
+
+  integration_activation:
+    level: ELEVATED
+    description: "No integration may be activated without formal human approval"
+    applies_to: all_integrations
+
+  governance_file_modification:
+    level: ELEVATED
+    description: "Governance files may not be modified without human instruction"
+
+  routing_or_trigger_change:
+    level: ELEVATED
+    description: "Changes to routing.yaml or triggers.yaml require human approval"
+
+  file_deletion:
+    level: BLOCKED
+    description: "File deletion is never auto-permitted — always human-initiated"
+
+  repository_main_branch_modification:
+    level: BLOCKED
+    description: "Main branch is protected — no autonomous modification"
+
+  raw_data_overwrite:
+    level: BLOCKED
+    description: "Raw data in /data/raw/ is immutable — never overwritten"
+
+# ─── Approval Recording ───────────────────────────────────────────────────────
+
+approval_record_format:
+  location: "/automation/handoffs/[W-ID]-[YYYY-MM-DD]-[instance].md"
+  required_fields:
+    - approval_type
+    - approved_by
+    - timestamp
+    - workflow_id_and_step
+    - what_was_approved
+    - any_conditions_or_notes

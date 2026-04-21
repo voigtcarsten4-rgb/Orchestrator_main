@@ -1,0 +1,217 @@
+# Routing Configuration
+# Defines which agent handles which task domain and event type.
+# Managed by: Master Orchestrator Agent (A-01)
+# Last updated: 2026-04-21
+
+version: "1.0"
+
+# ─── Domain-to-Agent Routing ───────────────────────────────────────────────
+
+domain_routes:
+  system_coordination:
+    agent: A-01
+    name: "Master Orchestrator Agent"
+    description: "All task routing, approval gates, workflow sequencing"
+
+  repository_health:
+    agent: A-02
+    name: "Repository and System Agent"
+    triggers:
+      - repository_initialized
+      - weekly_health_check
+      - new_agent_added
+      - human_health_check_request
+
+  website_extraction:
+    agent: A-03
+    name: "Website Extraction Agent"
+    triggers:
+      - website_url_provided
+      - scheduled_re_ingestion
+    requires_approval_before: true
+    approval_type: url_list_approval
+
+  content_structuring:
+    agent: A-04
+    name: "Content Structuring Agent"
+    triggers:
+      - w03_complete_and_approved
+    requires_approval_before: true
+    approval_type: raw_extraction_approval
+
+  app_mapping:
+    agent: A-05
+    name: "App Mapping Agent"
+    triggers:
+      - w04_complete_and_approved
+    requires_approval_before: true
+    approval_type: structured_content_approval
+
+  app_differentiation:
+    agent: A-06
+    name: "App Differentiation Agent"
+    triggers:
+      - w05_complete_and_approved
+    requires_approval_before: true
+    approval_type: app_mapping_approval
+    approval_level: elevated
+
+  asset_planning:
+    agent: A-07
+    name: "Asset and Image Planning Agent"
+    triggers:
+      - w06_complete_and_approved
+    parallel_with: A-08
+
+  content_generation:
+    agent: A-08
+    name: "Content Generation Agent"
+    triggers:
+      - w06_complete_and_approved
+    parallel_with: A-07
+
+  email_triage:
+    agent: A-09
+    name: "Email Triage and Drafting Agent"
+    triggers:
+      - email_batch_provided
+      - scheduled_email_review
+    output_routes:
+      - scheduling_data: A-10
+
+  calendar_scheduling:
+    agent: A-10
+    name: "Calendar and Scheduling Agent"
+    triggers:
+      - a09_scheduling_handoff_ready
+      - human_schedule_review_request
+      - w08_briefing_includes_calendar
+    requires_human_confirmation: true
+
+  daily_briefing:
+    agent: A-11
+    name: "Daily Briefing and Operations Agent"
+    triggers:
+      - morning_schedule_trigger
+      - human_briefing_request
+      - system_reinitialization
+
+  communication_drafting:
+    agent: A-12
+    name: "LinkedIn and Communication Agent"
+    triggers:
+      - communication_draft_requested
+      - w07_content_approved_for_comms
+    requires_approval_before: true
+    approval_type: content_source_approval
+
+  operations_reporting:
+    agent: A-13
+    name: "Business Operations Summary Agent"
+    triggers:
+      - report_requested
+      - weekly_report_schedule
+      - monthly_report_schedule
+
+  file_hygiene:
+    agent: A-14
+    name: "Desktop and File Hygiene Agent"
+    triggers:
+      - file_listing_provided
+      - human_hygiene_review_request
+    mode: analysis_only
+    no_auto_execution: true
+
+  integration_planning:
+    agent: A-15
+    name: "Integration Planning Agent"
+    triggers:
+      - integration_planning_requested
+      - integration_roadmap_review_scheduled
+    mode: documentation_only
+    no_live_connections: true
+
+# ─── Workflow-to-Agent Sequence Map ────────────────────────────────────────
+
+workflow_routes:
+  W-01:
+    name: "Repository Initialization"
+    primary_agent: A-02
+    trigger: repository_initialized
+
+  W-02:
+    name: "Project Intake"
+    primary_agent: A-01
+    trigger: new_project_initiated
+    downstream:
+      website_project: W-03
+      content_only: W-07
+      operations: W-08
+
+  W-03:
+    name: "Website Ingestion"
+    primary_agent: A-03
+    trigger: website_url_approved
+    downstream: W-04
+    gate: human_approval_required
+
+  W-04:
+    name: "Extraction to Structured Data"
+    primary_agent: A-04
+    trigger: w03_approved
+    downstream: W-05
+    gate: human_approval_required
+
+  W-05:
+    name: "Structured Data to App Mapping"
+    primary_agent: A-05
+    trigger: w04_approved
+    downstream: W-06
+    gate: human_approval_required
+
+  W-06:
+    name: "App Mapping to Differentiation"
+    primary_agent: A-06
+    trigger: w05_approved
+    downstream: W-07
+    gate: human_approval_required
+    gate_level: elevated
+
+  W-07:
+    name: "Differentiation to Content and Assets"
+    primary_agents: [A-07, A-08]
+    trigger: w06_approved
+    parallel: true
+    gate: human_approval_required
+
+  W-08:
+    name: "Daily Operations Briefing"
+    primary_agent: A-11
+    trigger: morning_schedule_trigger
+    recurrence: daily_working_days
+
+  W-09:
+    name: "Email to Calendar and Follow-up"
+    primary_agent: A-09
+    secondary_agent: A-10
+    trigger: email_batch_provided
+    gate: human_approval_required_for_all_actions
+
+  W-10:
+    name: "Communication Draft Preparation"
+    primary_agent: A-12
+    trigger: communication_draft_requested
+    gate: human_approval_required
+
+  W-11:
+    name: "Desktop and File Intake Review"
+    primary_agent: A-14
+    trigger: file_listing_provided
+    mode: analysis_only
+    gate: human_approval_required_per_action
+
+  W-12:
+    name: "Report Generation and Approval"
+    primary_agent: A-13
+    trigger: report_requested
+    gate: human_approval_required_for_external
