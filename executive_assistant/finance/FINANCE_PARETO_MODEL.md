@@ -25,7 +25,7 @@ Each finance item receives a Pareto score based on four dimensions:
 | Financial magnitude | 35 % | Amount as a proportion of total open position |
 | Time pressure | 35 % | How urgently action is needed (days to due date, overdue status) |
 | Relationship sensitivity | 15 % | Risk to a key business relationship if delayed |
-| Compounding risk | 15 % | Whether inaction triggers a cascade (legal, credit, operational) |
+| Compounding risk | 15% | Whether inaction triggers a cascade (legal, credit, operational) |
 
 **Total score: 0–100**
 
