@@ -410,9 +410,17 @@ function listAutomation_V650() { return listAutomation_V670(); }
 /* =========================
    LOCK / FATAL
    ========================= */
+/**
+ * Gibt das Haupt-Spreadsheet zurück.
+ * Ersatz für SpreadsheetApp.getActive() in Trigger- und Webapp-Kontexten.
+ */
+function getOrchestratorSpreadsheet_() {
+  return SpreadsheetApp.openById('1a0kMCb7DkzaDDLGYSgtYVU0m1Irrr_6NVXcJIizshqk');
+}
+
 function withScriptLock_(runnerName, fn) {
   const lock = LockService.getScriptLock();
-  const ss = SpreadsheetApp.getActive();
+  const ss = getOrchestratorSpreadsheet_();
   const log = makeLogger_(ss);
 
   try {
@@ -434,7 +442,7 @@ function fatal_(e, log) {
   const msg = String((e && e.message) || e);
   const st = String((e && e.stack) || "");
   try {
-    (log || makeLogger_(SpreadsheetApp.getActive())).error("FATAL ERROR", {
+    (log || makeLogger_(getOrchestratorSpreadsheet_())).error("FATAL ERROR", {
       message: msg,
       stack: st
     });

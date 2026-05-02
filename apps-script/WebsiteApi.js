@@ -241,7 +241,7 @@ function doGet(e) {
 }
 
 function loadWebsiteApiContext_() {
-  const ss = SpreadsheetApp.getActive();
+  const ss = getOrchestratorSpreadsheet_();
   const waters  = wrapTable_(readTable_(mustSheet_(ss, SHEET_WATERS),   null, null));
   const readings = wrapTable_(readTable_(mustSheet_(ss, SHEET_READINGS), null, null));
   const master   = wrapTable_(readTable_(mustSheet_(ss, SHEET_MASTER),   null, null));
@@ -560,7 +560,7 @@ function wrapTable_(tbl) {
 // =============================================================================
 
 function getElwisNotices_(params) {
-  var ss = SpreadsheetApp.getActive();
+  var ss = getOrchestratorSpreadsheet_();
 
   var waterId    = String(params.water_id    || '').trim();
   var bbNr       = String(params.bb_nr       || '').trim();
