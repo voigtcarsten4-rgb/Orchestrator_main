@@ -179,7 +179,31 @@ function buildWaterDetail_(waterId) {
       ]),
       alert: pickFromRefs_(refs, [
         { table: 'readings', row: 'readingsRow', aliases: [['alert_text']] }
-      ])
+      ]),
+      // Extended boater forecast fields (additive, may be null until pipeline writes them)
+      today_temp_max:        numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['today_temp_max']] }])),
+      today_temp_min:        numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['today_temp_min']] }])),
+      today_uv_max:          numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['today_uv_max']] }])),
+      today_precip_sum:      numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['today_precip_sum']] }])),
+      today_precip_prob_max: numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['today_precip_prob_max']] }])),
+      today_wind_max:        numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['today_wind_max']] }])),
+      today_gust_max:        numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['today_gust_max']] }])),
+      today_sunrise:         pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['today_sunrise']] }]) || null,
+      today_sunset:          pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['today_sunset']] }]) || null,
+      tomorrow_temp_max:     numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['tomorrow_temp_max']] }])),
+      tomorrow_temp_min:     numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['tomorrow_temp_min']] }])),
+      tomorrow_precip_sum:   numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['tomorrow_precip_sum']] }])),
+      tomorrow_wind_max:     numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['tomorrow_wind_max']] }]))
+    },
+    weather: {
+      apparent_temperature: numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['apparent_temperature']] }])),
+      humidity:             numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['humidity']] }])),
+      cloud_cover:          numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['cloud_cover']] }])),
+      pressure_msl:         numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['pressure_msl']] }])),
+      uv_index:             numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['uv_index']] }])),
+      is_day:               pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['is_day']] }]),
+      visibility:           numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['visibility']] }])),
+      weather_code:         numericOrNull_(pickFromRefs_(refs, [{ table: 'readings', row: 'readingsRow', aliases: [['weather_code']] }]))
     },
     captain: {
       outlook: pickFromRefs_(refs, [

@@ -4527,7 +4527,9 @@ function fetchOpenMeteo_(lat, lon, log) {
     const url = "https://api.open-meteo.com/v1/forecast?" +
       "latitude=" + latNum +
       "&longitude=" + lonNum +
-      "&current=temperature_2m,windspeed_10m,windgusts_10m,wind_direction_10m,visibility,precipitation,weather_code" +
+      "&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,weather_code,cloud_cover,pressure_msl,surface_pressure,windspeed_10m,windgusts_10m,wind_direction_10m,visibility,uv_index" +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,sunrise,sunset,daylight_duration,uv_index_max,precipitation_sum,precipitation_probability_max,windspeed_10m_max,windgusts_10m_max" +
+      "&forecast_days=2" +
       "&timezone=Europe/Berlin";
 
     const resp = UrlFetchApp.fetch(url, {
@@ -4549,7 +4551,12 @@ function fetchOpenMeteo_(lat, lon, log) {
     }
 
     const curr = data.current;
+    const daily = data.daily || {};
+    function dayAt_(arr, idx) {
+      return Array.isArray(arr) && arr.length > idx ? arr[idx] : null;
+    }
     const result = {
+      // Existing fields — KEEP for backwards-compat
       temperature_air: toNumberMaybe_(curr.temperature_2m),
       wind_speed: toNumberMaybe_(curr.windspeed_10m),
       wind_gust: toNumberMaybe_(curr.windgusts_10m),
@@ -4559,7 +4566,37 @@ function fetchOpenMeteo_(lat, lon, log) {
       visibility: toNumberMaybe_(curr.visibility),
       rain_intensity: toNumberMaybe_(curr.precipitation),
       weather_code: toNumberMaybe_(curr.weather_code),
-      timestamp: curr.time || ""
+      timestamp: curr.time || "",
+      // Additive fields — extended weather context for boaters
+      humidity: toNumberMaybe_(curr.relative_humidity_2m),
+      apparent_temperature: toNumberMaybe_(curr.apparent_temperature),
+      is_day: curr.is_day === 1 || curr.is_day === true,
+      cloud_cover: toNumberMaybe_(curr.cloud_cover),
+      pressure_msl: toNumberMaybe_(curr.pressure_msl),
+      surface_pressure: toNumberMaybe_(curr.surface_pressure),
+      uv_index: toNumberMaybe_(curr.uv_index),
+      rain: toNumberMaybe_(curr.rain),
+      // Today
+      today_temp_max: toNumberMaybe_(dayAt_(daily.temperature_2m_max, 0)),
+      today_temp_min: toNumberMaybe_(dayAt_(daily.temperature_2m_min, 0)),
+      today_apparent_max: toNumberMaybe_(dayAt_(daily.apparent_temperature_max, 0)),
+      today_uv_max: toNumberMaybe_(dayAt_(daily.uv_index_max, 0)),
+      today_precip_sum: toNumberMaybe_(dayAt_(daily.precipitation_sum, 0)),
+      today_precip_prob_max: toNumberMaybe_(dayAt_(daily.precipitation_probability_max, 0)),
+      today_wind_max: toNumberMaybe_(dayAt_(daily.windspeed_10m_max, 0)),
+      today_gust_max: toNumberMaybe_(dayAt_(daily.windgusts_10m_max, 0)),
+      today_weather_code: toNumberMaybe_(dayAt_(daily.weather_code, 0)),
+      today_sunrise: dayAt_(daily.sunrise, 0) || "",
+      today_sunset: dayAt_(daily.sunset, 0) || "",
+      today_daylight_seconds: toNumberMaybe_(dayAt_(daily.daylight_duration, 0)),
+      // Tomorrow
+      tomorrow_temp_max: toNumberMaybe_(dayAt_(daily.temperature_2m_max, 1)),
+      tomorrow_temp_min: toNumberMaybe_(dayAt_(daily.temperature_2m_min, 1)),
+      tomorrow_precip_sum: toNumberMaybe_(dayAt_(daily.precipitation_sum, 1)),
+      tomorrow_precip_prob_max: toNumberMaybe_(dayAt_(daily.precipitation_probability_max, 1)),
+      tomorrow_wind_max: toNumberMaybe_(dayAt_(daily.windspeed_10m_max, 1)),
+      tomorrow_gust_max: toNumberMaybe_(dayAt_(daily.windgusts_10m_max, 1)),
+      tomorrow_weather_code: toNumberMaybe_(dayAt_(daily.weather_code, 1))
     };
 
     _METEO_CACHE[cacheKey] = result;
