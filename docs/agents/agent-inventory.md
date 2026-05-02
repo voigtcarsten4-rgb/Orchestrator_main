@@ -69,3 +69,12 @@ When a new agent is needed:
 4. Add it to `/config/responsibilities/agent-responsibilities.md`
 5. Create its prompt file in `/automation/prompts/agents/`
 6. Notify the Master Orchestrator Agent of the new scope
+
+---
+
+## Agent Extensions
+
+Per-agent plugins, MCP connectors, and recommended GitHub repositories are
+catalogued in [`agent-extensions.md`](agent-extensions.md). That document
+also proposes new agents (CEO/Strategy, Sales, Finance, Marketing/SEO,
+Design/Brand, Legal, Research) for currently-uncovered domains.
