@@ -2,7 +2,7 @@
 
 ## Useful GitHub Repositories for the Orchestrator System
 
-**Version:** 1.1
+**Version:** 1.2
 **Status:** Reference only — listing does not imply integration or activation
 **Owner:** Integration Planning Agent (A-15)
 **Last Reviewed:** 2026-05-02
@@ -42,6 +42,14 @@ separate entry in `docs/integrations/integration-roadmap.md` and approval per
 | Agent Runtimes & Coding Agents | Alternative or complementary runtimes to the current setup |
 | Human-in-the-Loop Tooling | Reinforces the approval model and draft-before-send rule |
 | Sandboxed Execution | Safe execution of agent-generated code |
+| Web Scraping & Content Ingestion | Powers INT-04 Website Extraction |
+| Document Parsing & Conversion | Powers Email Triage and Content Generation |
+| Evaluation & Testing | Quality gate for prompts, agents, and workflows |
+| Knowledge Graphs | Structured memory for entities, relationships, projects |
+| Schedulers & Durable Workflows | Reliable execution of recurring workflows |
+| Security & Secret Scanning | Enforces the "no credentials in repo" rule |
+| Observability & Logging | Backs traceability principle |
+| Local CI / Testing | Validate workflows before they run in production |
 
 ---
 
@@ -526,6 +534,261 @@ techniques they implement (caching, compression, gateway-level routing) are
 | Why it matters | Required for any future workflow that executes agent-generated code; matches the "safe-by-default" principle. |
 | Risk Level | Medium |
 | Status | Reference — pre-requisite for any code-execution workflow |
+
+---
+
+### 3.13 Web Scraping & Content Ingestion
+
+#### R-39 — Firecrawl
+
+| Property | Value |
+|---|---|
+| Repository | `mendableai/firecrawl` |
+| URL | https://github.com/mendableai/firecrawl |
+| Domain | LLM-friendly web crawler/scraper |
+| Why it matters | Direct fit for INT-04: returns clean markdown plus metadata, drastically simplifies the Website Extraction workflow. |
+| Risk Level | Low–Medium (network egress) |
+| Status | Strong candidate for INT-04 |
+
+#### R-40 — Jina Reader
+
+| Property | Value |
+|---|---|
+| Repository | `jina-ai/reader` |
+| URL | https://github.com/jina-ai/reader |
+| Domain | URL → clean markdown |
+| Why it matters | Fastest path to "give me the readable content of this page" for content workflows. |
+| Risk Level | Low |
+| Status | Reference |
+
+#### R-41 — Crawl4AI
+
+| Property | Value |
+|---|---|
+| Repository | `unclecode/crawl4ai` |
+| URL | https://github.com/unclecode/crawl4ai |
+| Domain | Async, LLM-optimized crawler |
+| Why it matters | Self-hostable alternative to Firecrawl; useful for the "no credentials, no third-party" mode. |
+| Risk Level | Low–Medium |
+| Status | Reference |
+
+#### R-42 — Playwright
+
+| Property | Value |
+|---|---|
+| Repository | `microsoft/playwright` |
+| URL | https://github.com/microsoft/playwright |
+| Domain | Browser automation |
+| Why it matters | Required for any extraction that depends on JavaScript rendering or login walls. |
+| Risk Level | Medium (cred handling if used with login) |
+| Status | Reference |
+
+#### R-43 — browser-use
+
+| Property | Value |
+|---|---|
+| Repository | `browser-use/browser-use` |
+| URL | https://github.com/browser-use/browser-use |
+| Domain | LLM-driven browser agent |
+| Why it matters | Lets agents complete multi-step browser tasks; pairs with INT-04 for dynamic sites. |
+| Risk Level | High (autonomous browsing) |
+| Status | Candidate — requires approval per INT-04 rules |
+
+---
+
+### 3.14 Document Parsing & Conversion
+
+#### R-44 — Unstructured
+
+| Property | Value |
+|---|---|
+| Repository | `Unstructured-IO/unstructured` |
+| URL | https://github.com/Unstructured-IO/unstructured |
+| Domain | Universal document parser (PDF, DOCX, HTML, EML, ...) |
+| Why it matters | Single library for parsing the formats encountered across Email Triage, Website Extraction, and Content Generation. |
+| Risk Level | Low |
+| Status | Strong reference |
+
+#### R-45 — MarkItDown
+
+| Property | Value |
+|---|---|
+| Repository | `microsoft/markitdown` |
+| URL | https://github.com/microsoft/markitdown |
+| Domain | Office and PDF → Markdown |
+| Why it matters | Lightweight conversion to the orchestrator's preferred storage format (Markdown). |
+| Risk Level | Low |
+| Status | Reference |
+
+---
+
+### 3.15 Evaluation & Testing
+
+#### R-46 — OpenAI Evals
+
+| Property | Value |
+|---|---|
+| Repository | `openai/evals` |
+| URL | https://github.com/openai/evals |
+| Domain | Eval framework for LLM outputs |
+| Why it matters | Reference patterns for evaluating prompts and agent outputs against fixtures — strengthens the traceability principle. |
+| Risk Level | Low |
+| Status | Reference |
+
+#### R-47 — Inspect AI
+
+| Property | Value |
+|---|---|
+| Repository | `UKGovernmentBEIS/inspect_ai` |
+| URL | https://github.com/UKGovernmentBEIS/inspect_ai |
+| Domain | Model evaluation framework |
+| Why it matters | Used by Anthropic for safety/quality evals; clean primitives for scoring agent runs. |
+| Risk Level | Low |
+| Status | Reference |
+
+#### R-48 — lm-evaluation-harness
+
+| Property | Value |
+|---|---|
+| Repository | `EleutherAI/lm-evaluation-harness` |
+| URL | https://github.com/EleutherAI/lm-evaluation-harness |
+| Domain | Standardized LLM benchmarking |
+| Why it matters | Useful when comparing model choices for cost/quality trade-offs. |
+| Risk Level | Low |
+| Status | Reference |
+
+---
+
+### 3.16 Knowledge Graphs
+
+#### R-49 — Neo4j
+
+| Property | Value |
+|---|---|
+| Repository | `neo4j/neo4j` |
+| URL | https://github.com/neo4j/neo4j |
+| Domain | Graph database |
+| Why it matters | Structured memory for projects, agents, workflows, and their relationships — complements the vector stores in 3.8. |
+| Risk Level | Medium |
+| Status | Reference |
+
+#### R-50 — Kuzu
+
+| Property | Value |
+|---|---|
+| Repository | `kuzudb/kuzu` |
+| URL | https://github.com/kuzudb/kuzu |
+| Domain | Embedded graph database |
+| Why it matters | Lightweight, file-based; can ship inside the repo for local-first knowledge graphs without a server. |
+| Risk Level | Low |
+| Status | Strong reference for local-first deployments |
+
+---
+
+### 3.17 Schedulers & Durable Workflows
+
+#### R-51 — Temporal
+
+| Property | Value |
+|---|---|
+| Repository | `temporalio/temporal` |
+| URL | https://github.com/temporalio/temporal |
+| Domain | Durable execution / workflow engine |
+| Why it matters | Production-grade reliability for long-running orchestrator workflows; survives crashes and restarts. |
+| Risk Level | Medium–High (infrastructure component) |
+| Status | Candidate when scheduled workflows leave planning |
+
+#### R-52 — Prefect
+
+| Property | Value |
+|---|---|
+| Repository | `PrefectHQ/prefect` |
+| URL | https://github.com/PrefectHQ/prefect |
+| Domain | Python-native workflow orchestration |
+| Why it matters | Lower barrier than Temporal; good fit for daily-briefing and reporting cadences. |
+| Risk Level | Medium |
+| Status | Candidate |
+
+---
+
+### 3.18 Security & Secret Scanning
+
+These directly enforce Section 4 of the integration roadmap ("Credential
+Management Rules") and the "no credentials in repo" governance principle.
+
+#### R-53 — TruffleHog
+
+| Property | Value |
+|---|---|
+| Repository | `trufflesecurity/trufflehog` |
+| URL | https://github.com/trufflesecurity/trufflehog |
+| Domain | Secret scanning |
+| Why it matters | Detects accidentally committed credentials; should run in pre-commit and CI. |
+| Risk Level | Low |
+| Status | Strong reference — recommended for activation |
+
+#### R-54 — Gitleaks
+
+| Property | Value |
+|---|---|
+| Repository | `gitleaks/gitleaks` |
+| URL | https://github.com/gitleaks/gitleaks |
+| Domain | Secret scanning |
+| Why it matters | Lightweight alternative to TruffleHog; either-or selection. |
+| Risk Level | Low |
+| Status | Reference |
+
+#### R-55 — pre-commit
+
+| Property | Value |
+|---|---|
+| Repository | `pre-commit/pre-commit` |
+| URL | https://github.com/pre-commit/pre-commit |
+| Domain | Git hook framework |
+| Why it matters | Standard host for secret scanners, formatters, and linters; closes the loop on the documentation-first principle. |
+| Risk Level | Low |
+| Status | Strong reference |
+
+---
+
+### 3.19 Observability & Logging
+
+#### R-56 — OpenTelemetry (Python)
+
+| Property | Value |
+|---|---|
+| Repository | `open-telemetry/opentelemetry-python` |
+| URL | https://github.com/open-telemetry/opentelemetry-python |
+| Domain | Tracing, metrics, logs |
+| Why it matters | Standard backbone for traceability across agents, workflows, and integrations. |
+| Risk Level | Low |
+| Status | Reference |
+
+#### R-57 — Grafana
+
+| Property | Value |
+|---|---|
+| Repository | `grafana/grafana` |
+| URL | https://github.com/grafana/grafana |
+| Domain | Visualization for metrics/logs/traces |
+| Why it matters | Operator dashboard for the Daily Briefing and Business Operations Summary domains. |
+| Risk Level | Low |
+| Status | Reference |
+
+---
+
+### 3.20 Local CI / Testing
+
+#### R-58 — act
+
+| Property | Value |
+|---|---|
+| Repository | `nektos/act` |
+| URL | https://github.com/nektos/act |
+| Domain | Run GitHub Actions locally |
+| Why it matters | Validates `.github/workflows/` before a push hits main; supports the "no untested automation" rule. |
+| Risk Level | Low |
+| Status | Reference |
 
 ---
 
