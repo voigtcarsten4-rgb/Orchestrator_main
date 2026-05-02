@@ -205,6 +205,15 @@ function doGet(e) {
   const waterId = String(params.water_id || '').trim();
 
   try {
+    if (action === 'health') {
+      return jsonOutput_({
+        ok: true,
+        service: 'wave-bite-website-api',
+        generated_at: new Date().toISOString(),
+        actions_supported: ['health', 'stations', 'detail', 'all', 'elwis_notices']
+      });
+    }
+
     if (action === 'stations') {
       return jsonOutput_({ ok: true, generated_at: new Date().toISOString(), stations: buildStationsList_() });
     }
@@ -230,7 +239,7 @@ function doGet(e) {
       return jsonOutput_(getElwisNotices_(params));
     }
 
-    return jsonOutput_({ ok: false, error: 'invalid_action', message: 'Supported actions: stations, detail, all, elwis_notices.' });
+    return jsonOutput_({ ok: false, error: 'invalid_action', message: 'Supported actions: health, stations, detail, all, elwis_notices.' });
   } catch (err) {
     return jsonOutput_({
       ok: false,
@@ -560,93 +569,232 @@ function wrapTable_(tbl) {
 // =============================================================================
 
 function getElwisNotices_(params) {
-  var ss = getOrchestratorSpreadsheet_();
+  try {
+    var ss = getOrchestratorSpreadsheet_();
 
-  var waterId    = String(params.water_id    || '').trim();
-  var bbNr       = String(params.bb_nr       || '').trim();
-  var activeOnly = String(params.active_only || 'true').toLowerCase() !== 'false';
-  var limitParam = Math.min(parseInt(params.limit || '50', 10), 200);
-  if (isNaN(limitParam) || limitParam < 1) limitParam = 50;
+    var waterId    = String(params.water_id    || params.matched_water_id || '').trim();
+    var bbNr       = String(params.bb_nr       || '').trim();
+    var region     = String(params.region      || '').trim().toLowerCase();
+    var severity   = String(params.severity    || '').trim().toLowerCase();
+    var activeRaw  = String(params.active_only != null ? params.active_only : 'true').toLowerCase();
+    var activeOnly = !(activeRaw === 'false' || activeRaw === '0' || activeRaw === 'no');
+    var limitParam = parseInt(params.limit || '120', 10);
+    if (isNaN(limitParam) || limitParam < 1) limitParam = 120;
+    if (limitParam > 500) limitParam = 500;
 
-  var shActive  = ss.getSheetByName('Elwis_Notices_Active');
-  var shStaging = ss.getSheetByName('Elwis_Notices_Staging');
-  var sh = shActive || shStaging;
+    // Bevorzugt neues Sheet, fallback auf Legacy-Sheets (NICHT entfernen)
+    var shNew     = ss.getSheetByName('Elwis_Notices');
+    var shActive  = ss.getSheetByName('Elwis_Notices_Active');
+    var shStaging = ss.getSheetByName('Elwis_Notices_Staging');
+    var sh = shNew || shActive || shStaging;
+    var schema = shNew ? 'v2' : 'legacy';
 
-  if (!sh) {
-    return { ok: false, error: 'no_elwis_sheet',
-             message: 'Neither Elwis_Notices_Active nor Elwis_Notices_Staging found.',
-             notices: [], count: 0 };
-  }
-
-  var data = sh.getDataRange().getValues();
-  if (data.length < 2) {
-    return { ok: true, notices: [], count: 0, source: sh.getName(),
-             generated_at: new Date().toISOString() };
-  }
-
-  var headers = data[0].map(function(h) { return String(h).toLowerCase().trim(); });
-  var today = new Date().toISOString().slice(0, 10);
-
-  var idxValid      = headers.indexOf('valid_to');
-  var idxWaterId    = headers.indexOf('matched_water_id');
-  var idxBbNr       = headers.indexOf('matched_bb_nr');
-  var idxNoticeId   = headers.indexOf('notice_id');
-  var idxTitle      = headers.indexOf('title');
-  var idxWaterway   = headers.indexOf('waterway');
-  var idxSeverity   = headers.indexOf('severity');
-  var idxType       = headers.indexOf('notice_type');
-  var idxFrom       = headers.indexOf('valid_from');
-  var idxUrl        = headers.indexOf('url');
-  var idxSummary    = headers.indexOf('ui_summary');
-  var idxConfidence = headers.indexOf('match_confidence');
-  var idxText       = headers.indexOf('raw_text');
-
-  var notices = [];
-
-  for (var i = 1; i < data.length && notices.length < limitParam; i++) {
-    var row = data[i];
-
-    if (activeOnly && idxValid >= 0) {
-      var validTo = String(row[idxValid] || '').slice(0, 10);
-      if (validTo && validTo < today) continue;
+    if (!sh) {
+      // Defensiv: kein Sheet -> trotzdem ok=true, leeres items
+      return {
+        ok: true,
+        generated_at: new Date().toISOString(),
+        count: 0,
+        items: [],
+        notices: [],
+        source: null,
+        schema: schema,
+        note: 'no Elwis sheet present; run runElwisFetch() once to initialize'
+      };
     }
 
-    if (waterId && idxWaterId >= 0) {
-      if (String(row[idxWaterId] || '').trim() !== waterId) continue;
+    var lastRow = sh.getLastRow();
+    var lastCol = sh.getLastColumn();
+    if (lastRow < 2 || lastCol < 1) {
+      return {
+        ok: true,
+        generated_at: new Date().toISOString(),
+        count: 0,
+        items: [],
+        notices: [],
+        source: sh.getName(),
+        schema: schema
+      };
     }
 
-    if (bbNr && idxBbNr >= 0) {
-      if (String(row[idxBbNr] || '').trim() !== bbNr) continue;
+    var data = sh.getRange(1, 1, lastRow, lastCol).getValues();
+    var headers = data[0].map(function(h) { return String(h || '').toLowerCase().trim(); });
+
+    var col = function(name) { return headers.indexOf(name); };
+    var idx = {
+      notice_uid:        col('notice_uid'),
+      title:             col('title'),
+      summary:           col('summary'),
+      severity:          col('severity'),
+      category:          col('category'),
+      waterway:          col('waterway'),
+      region:            col('region'),
+      valid_from:        col('valid_from'),
+      valid_to:          col('valid_to'),
+      source_url:        col('source_url'),
+      match_scope:       col('match_scope'),
+      match_confidence:  col('match_confidence'),
+      matched_water_id:  col('matched_water_id'),
+      matched_station_id:col('matched_station_id'),
+      display_policy:    col('display_policy'),
+      is_active:         col('is_active'),
+      sort_weight:       col('sort_weight'),
+      updated_at:        col('updated_at'),
+      // Legacy fallbacks (Elwis_Notices_Staging)
+      legacy_notice_id:  col('notice_id'),
+      legacy_url:        col('url'),
+      legacy_type:       col('notice_type'),
+      legacy_text:       col('raw_text'),
+      legacy_published:  col('published_at'),
+      legacy_match_bb:   col('matched_bb_nr'),
+      legacy_match_conf: col('match_confidence')
+    };
+
+    var get = function(row, key, fallback) {
+      var i = idx[key];
+      return (i != null && i >= 0) ? row[i] : (fallback != null ? fallback : '');
+    };
+
+    var items = [];
+    for (var r = 1; r < data.length && items.length < limitParam; r++) {
+      var row = data[r];
+      var item = mapElwisRowToItem_(row, idx, get, schema);
+
+      if (!item.notice_uid) continue;
+
+      if (activeOnly && item.is_active !== true) continue;
+
+      if (waterId && String(item.matched_water_id || '').trim() !== waterId) continue;
+      if (bbNr && String(item.matched_station_id || '').trim() !== bbNr) continue;
+      if (region && String(item.region || '').toLowerCase().indexOf(region) < 0) continue;
+      if (severity && String(item.severity || '').toLowerCase() !== severity) continue;
+
+      items.push(item);
     }
 
-    notices.push({
-      notice_id:        idxNoticeId   >= 0 ? String(row[idxNoticeId]   || '') : '',
-      title:            idxTitle      >= 0 ? String(row[idxTitle]      || '') : '',
-      waterway:         idxWaterway   >= 0 ? String(row[idxWaterway]   || '') : '',
-      notice_type:      idxType       >= 0 ? String(row[idxType]       || '') : '',
-      severity:         idxSeverity   >= 0 ? String(row[idxSeverity]   || '') : '',
-      valid_from:       idxFrom       >= 0 ? String(row[idxFrom]       || '').slice(0,10) : '',
-      valid_to:         idxValid      >= 0 ? String(row[idxValid]      || '').slice(0,10) : '',
-      ui_summary:       idxSummary    >= 0 ? String(row[idxSummary]    || '') : '',
-      url:              idxUrl        >= 0 ? String(row[idxUrl]        || '') : '',
-      match_confidence: idxConfidence >= 0 ? String(row[idxConfidence] || '') : '',
-      matched_water_id: idxWaterId    >= 0 ? String(row[idxWaterId]    || '') : '',
-      matched_bb_nr:    idxBbNr       >= 0 ? String(row[idxBbNr]       || '') : '',
-      raw_text_short:   idxText       >= 0 ? String(row[idxText] || '').slice(0,150) : ''
+    // Sort: sort_weight desc, then updated_at desc
+    items.sort(function(a, b) {
+      var wa = Number(a.sort_weight) || 0;
+      var wb = Number(b.sort_weight) || 0;
+      if (wb !== wa) return wb - wa;
+      return String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
     });
+
+    return {
+      ok: true,
+      generated_at: new Date().toISOString(),
+      count: items.length,
+      source: sh.getName(),
+      schema: schema,
+      filters_applied: {
+        active_only: activeOnly,
+        limit: limitParam,
+        water_id: waterId || null,
+        bb_nr: bbNr || null,
+        region: region || null,
+        severity: severity || null
+      },
+      items: items,
+      notices: items   // backward-compat alias
+    };
+  } catch (err) {
+    return {
+      ok: true,
+      generated_at: new Date().toISOString(),
+      count: 0,
+      items: [],
+      notices: [],
+      error_internal: String((err && err.message) || err)
+    };
+  }
+}
+
+function mapElwisRowToItem_(row, idx, get, schema) {
+  var validFrom = isoDateOnly_(get(row, 'valid_from'));
+  var validTo   = isoDateOnly_(get(row, 'valid_to'));
+  var isActiveRaw = get(row, 'is_active');
+  var isActive;
+  if (typeof isActiveRaw === 'boolean') {
+    isActive = isActiveRaw;
+  } else {
+    var s = String(isActiveRaw || '').toLowerCase().trim();
+    if (s === 'true' || s === '1' || s === 'yes') isActive = true;
+    else if (s === 'false' || s === '0' || s === 'no') isActive = false;
+    else isActive = computeIsActiveFromDates_(validFrom, validTo);
+  }
+
+  var sortWeightRaw = get(row, 'sort_weight');
+  var sortWeight = Number(sortWeightRaw);
+  if (isNaN(sortWeight)) sortWeight = 0;
+
+  var notice_uid = String(get(row, 'notice_uid') || '').trim();
+  if (!notice_uid && schema === 'legacy') {
+    var legId = String(get(row, 'legacy_notice_id') || '').trim();
+    if (legId) notice_uid = 'legacy:' + legId;
+  }
+
+  var sourceUrl = String(get(row, 'source_url') || '').trim();
+  if (!sourceUrl && schema === 'legacy') {
+    sourceUrl = String(get(row, 'legacy_url') || '').trim() || 'https://www.elwis.de/';
+  }
+
+  var matchedStationId = String(get(row, 'matched_station_id') || '').trim();
+  if (!matchedStationId && schema === 'legacy') {
+    matchedStationId = String(get(row, 'legacy_match_bb') || '').trim();
+  }
+
+  var summary = String(get(row, 'summary') || '').trim();
+  if (!summary) {
+    summary = String(get(row, 'title') || get(row, 'legacy_text') || '').trim().slice(0, 160);
+  }
+
+  var matchConf = String(get(row, 'match_confidence') || '').trim();
+  if (!matchConf && schema === 'legacy') {
+    matchConf = String(get(row, 'legacy_match_conf') || '').trim();
   }
 
   return {
-    ok: true,
-    generated_at: new Date().toISOString(),
-    count: notices.length,
-    source: sh.getName(),
-    filters_applied: {
-      water_id: waterId || null,
-      bb_nr: bbNr || null,
-      active_only: activeOnly,
-      limit: limitParam
-    },
-    notices: notices
+    notice_uid:        notice_uid,
+    title:             String(get(row, 'title') || '').trim(),
+    summary:           summary,
+    severity:          String(get(row, 'severity') || 'info').toLowerCase().trim(),
+    category:          String(get(row, 'category') || 'info').toLowerCase().trim(),
+    waterway:          String(get(row, 'waterway') || '').trim(),
+    region:            String(get(row, 'region') || '').trim(),
+    valid_from:        validFrom,
+    valid_to:          validTo,
+    source_url:        sourceUrl,
+    match_scope:       String(get(row, 'match_scope') || 'global').toLowerCase().trim(),
+    match_confidence:  matchConf || 'none',
+    matched_water_id:  String(get(row, 'matched_water_id') || '').trim(),
+    matched_station_id:matchedStationId,
+    display_policy:    String(get(row, 'display_policy') || 'global').toLowerCase().trim(),
+    is_active:         isActive,
+    sort_weight:       sortWeight,
+    updated_at:        String(get(row, 'updated_at') || '').trim()
   };
+}
+
+function isoDateOnly_(v) {
+  if (v == null || v === '') return '';
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    if (isNaN(v.getTime())) return '';
+    return v.toISOString().slice(0, 10);
+  }
+  var s = String(v).trim();
+  if (!s) return '';
+  return s.slice(0, 10);
+}
+
+function computeIsActiveFromDates_(fromIso, toIso) {
+  var today = new Date();
+  if (fromIso) {
+    var f = new Date(fromIso);
+    if (!isNaN(f.getTime()) && f > today) return false;
+  }
+  if (toIso) {
+    var t = new Date(toIso);
+    if (!isNaN(t.getTime()) && t < today) return false;
+  }
+  return true;
 }
