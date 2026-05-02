@@ -4,6 +4,7 @@
 // Namespace verifiziert: http://www.ris.eu/nts.ms/2.0.4.0 (WSDL live 30.04.2026)
 // SOAPAction verifiziert: "http://www.ris.eu/nts.ms/get_messages"
 // FIX v2: parseElwisResponse_ nutzt findElwisElements_() mit getChildren()
+// PROXY v3: fetchElwisNotices_ nutzt Cloudflare Worker wenn ELWIS_PROXY_URL gesetzt
 // ===========================================================================
 
 /**
@@ -30,16 +31,29 @@ function runElwisStagingDryRun() {
     var msgType = messageTypes[t];
     Logger.log('[ELWIS] Verarbeite message_type: ' + msgType);
     try {
-      var xmlText = fetchElwisNotices_(msgType, 14);
-      if (!xmlText) { Logger.log('[ELWIS] ' + msgType + ': Kein XML.'); continue; }
-      var elements = parseElwisResponse_(xmlText);
-      Logger.log('[ELWIS] ' + msgType + ': result_message gefunden: ' + elements.length);
-      totalFetched += elements.length;
+      var result = fetchElwisNotices_(msgType, 14);
+      if (!result) { Logger.log('[ELWIS] ' + msgType + ': Kein Ergebnis.'); continue; }
+
       var rows = [];
-      for (var i = 0; i < elements.length; i++) {
-        var row = parseElwisNotice_(elements[i], msgType);
-        if (row) rows.push(matchElwisToWater_(row, watersLookup));
+      if (result.isProxy) {
+        // Proxy-Pfad: JSON bereits geparst, direkt als Rows verarbeiten
+        Logger.log('[ELWIS] ' + msgType + ': Proxy-Pfad. Nachrichten: ' + result.messages.length + ' / total: ' + result.total_count);
+        totalFetched += result.messages.length;
+        for (var pi = 0; pi < result.messages.length; pi++) {
+          var row = parseElwisNoticeFromProxy_(result.messages[pi], msgType);
+          if (row) rows.push(matchElwisToWater_(row, watersLookup));
+        }
+      } else {
+        // SOAP-Fallback-Pfad: XML parsen
+        var elements = parseElwisResponse_(result.xml);
+        Logger.log('[ELWIS] ' + msgType + ': result_message gefunden: ' + elements.length);
+        totalFetched += elements.length;
+        for (var i = 0; i < elements.length; i++) {
+          var row = parseElwisNotice_(elements[i], msgType);
+          if (row) rows.push(matchElwisToWater_(row, watersLookup));
+        }
       }
+
       Logger.log('[ELWIS] ' + msgType + ': ' + rows.length + ' Zeilen geparst.');
       if (rows.length > 0) {
         writeElwisToStaging_(stagingSheet, rows);
@@ -78,23 +92,56 @@ function initElwisStaging_(ss) {
 }
 
 // ===========================================================================
-// FETCH – limit 20 fuer schnelle Ausfuehrung
+// FETCH – Proxy bevorzugt, SOAP als Fallback
 // ===========================================================================
 function fetchElwisNotices_(messageType, daysBack) {
+  // --- Proxy-Pfad ---
+  var proxyUrl = '';
+  try {
+    proxyUrl = PropertiesService.getScriptProperties().getProperty('ELWIS_PROXY_URL') || '';
+  } catch (e) {
+    Logger.log('[ELWIS] Script Property Fehler: ' + e.message);
+  }
+
+  if (proxyUrl) {
+    try {
+      var url = proxyUrl + '/elwis/nts?message_type=' + encodeURIComponent(messageType) +
+                '&days_back=' + daysBack + '&limit=200';
+      Logger.log('[ELWIS] Proxy-URL: ' + url);
+      var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+      var code = resp.getResponseCode();
+      Logger.log('[ELWIS] Proxy HTTP ' + code + ' fuer ' + messageType);
+      if (code === 200) {
+        var json = JSON.parse(resp.getContentText('UTF-8'));
+        if (json.ok && json.messages) {
+          return { isProxy: true, messages: json.messages, total_count: json.total_count || json.count };
+        }
+        Logger.log('[ELWIS] Proxy JSON unvollstaendig: ' + JSON.stringify(json).slice(0, 200));
+      }
+      Logger.log('[ELWIS] Proxy fehlgeschlagen (HTTP ' + code + ') – Fallback zu SOAP');
+    } catch (e) {
+      Logger.log('[ELWIS] Proxy Exception: ' + e.message + ' – Fallback zu SOAP');
+    }
+  } else {
+    Logger.log('[ELWIS] Kein ELWIS_PROXY_URL gesetzt – direkter SOAP-Aufruf');
+  }
+
+  // --- SOAP-Fallback ---
   var endpoint = 'https://nts40.elwis.de/server/web/MessageServer.php';
   var ns = 'http://www.ris.eu/nts.ms/2.0.4.0';
   var soapAction = 'http://www.ris.eu/nts.ms/get_messages';
   var now = new Date();
   var from = new Date(now.getTime() - daysBack * 24 * 3600 * 1000);
-  var fmt = function(d) { return Utilities.formatDate(d, 'UTC', 'yyyy-MM-dd') + 'T00:00:00Z'; };
+  var fmt = function(d) { return Utilities.formatDate(d, 'UTC', 'yyyy-MM-dd'); };
   var soapBody = '<?xml version="1.0" encoding="UTF-8"?>' +
-    '<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:NS1="' + ns + '">' +
-    '<SOAP-ENV:Body><NS1:get_messages>' +
-    '<NS1:message_type>' + messageType + '</NS1:message_type>' +
-    '<NS1:date_from>' + fmt(from) + '</NS1:date_from>' +
-    '<NS1:date_to>' + fmt(now) + '</NS1:date_to>' +
-    '<NS1:limit>20</NS1:limit>' +
-    '</NS1:get_messages></SOAP-ENV:Body></SOAP-ENV:Envelope>';
+    '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="' + ns + '">' +
+    '<soap:Body><tns:get_messages_query>' +
+    '<tns:message_type>' + messageType + '</tns:message_type>' +
+    '<tns:dates_issue><tns:date_start>' + fmt(from) + '</tns:date_start>' +
+    '<tns:date_end>' + fmt(now) + '</tns:date_end></tns:dates_issue>' +
+    '<tns:paging_request><tns:offset>0</tns:offset><tns:limit>200</tns:limit>' +
+    '<tns:total_count>true</tns:total_count></tns:paging_request>' +
+    '</tns:get_messages_query></soap:Body></soap:Envelope>';
   var options = {
     method: 'post',
     contentType: 'text/xml; charset=UTF-8',
@@ -102,10 +149,40 @@ function fetchElwisNotices_(messageType, daysBack) {
     payload: soapBody,
     muteHttpExceptions: true
   };
-  var resp = UrlFetchApp.fetch(endpoint, options);
-  var code = resp.getResponseCode();
-  if (code !== 200) { Logger.log('[ELWIS] HTTP ' + code + ' fuer ' + messageType); return null; }
-  return resp.getContentText('UTF-8');
+  try {
+    var soapResp = UrlFetchApp.fetch(endpoint, options);
+    var soapCode = soapResp.getResponseCode();
+    Logger.log('[ELWIS] SOAP HTTP ' + soapCode + ' fuer ' + messageType);
+    if (soapCode !== 200) { return null; }
+    return { isProxy: false, xml: soapResp.getContentText('UTF-8') };
+  } catch (e) {
+    Logger.log('[ELWIS] SOAP Exception: ' + e.message);
+    return null;
+  }
+}
+
+// ===========================================================================
+// PARSE PROXY RESPONSE – JSON-Objekt direkt zu Row-Array
+// ===========================================================================
+function parseElwisNoticeFromProxy_(msg, source) {
+  try {
+    var noticeId   = msg.notice_id   || (source + '-' + new Date().getTime());
+    var title      = msg.contents    || msg.subject_code || '';
+    var area       = msg.fairway_name || '';
+    var waterway   = msg.section_name || msg.fairway_name || area;
+    var validFrom  = msg.valid_from  || '';
+    var validTo    = msg.valid_to    || '';
+    var publishedAt = msg.date_issue || '';
+    var rawText    = title.slice(0, 200);
+    var createdAt  = new Date().toISOString();
+
+    return [source, noticeId, title, source, area, waterway,
+            validFrom, validTo, publishedAt, '', rawText,
+            '', '', '', createdAt, ''];
+  } catch (e) {
+    Logger.log('[ELWIS] parseElwisNoticeFromProxy_ Fehler: ' + e.message);
+    return null;
+  }
 }
 
 // ===========================================================================
@@ -126,7 +203,6 @@ function parseElwisResponse_(xmlText) {
 
 /**
  * Rekursive Suche mit getChildren() – liefert echte XmlElement-Objekte.
- * KEIN getDescendants() – das wuerde XmlContent zurueckgeben ohne getName().
  */
 function findElwisElements_(element, targetName, results) {
   try {
@@ -144,7 +220,7 @@ function findElwisElements_(element, targetName, results) {
 }
 
 // ===========================================================================
-// PARSE NOTICE – FIX v2: getDeepText mit getChildren()
+// PARSE NOTICE (XML-Pfad) – FIX v2: getDeepText mit getChildren()
 // ===========================================================================
 function parseElwisNotice_(msgElement, source) {
   try {
@@ -263,33 +339,27 @@ function writeElwisToStaging_(stagingSheet, rows) {
 // ===========================================================================
 function testElwisFetch() {
   Logger.log('[ELWIS] === DIAGNOSE START ===');
+  var proxyUrl = '';
   try {
-    var wsdlResp = UrlFetchApp.fetch('https://nts40.elwis.de/server/web/MessageServer.php?wsdl', { muteHttpExceptions: true });
-    Logger.log('[ELWIS] WSDL HTTP: ' + wsdlResp.getResponseCode());
-  } catch (e) { Logger.log('[ELWIS] WSDL Fehler: ' + e.message); }
+    proxyUrl = PropertiesService.getScriptProperties().getProperty('ELWIS_PROXY_URL') || '';
+    Logger.log('[ELWIS] ELWIS_PROXY_URL: ' + (proxyUrl || '(nicht gesetzt)'));
+  } catch (e) { Logger.log('[ELWIS] Script Property Fehler: ' + e.message); }
+
   try {
-    var xmlText = fetchElwisNotices_('FTM', 14);
-    if (!xmlText) {
-      Logger.log('[ELWIS] FTM: kein XML');
+    var result = fetchElwisNotices_('FTM', 14);
+    if (!result) {
+      Logger.log('[ELWIS] FTM: kein Ergebnis');
+    } else if (result.isProxy) {
+      Logger.log('[ELWIS] FTM via Proxy: ' + result.messages.length + ' Nachrichten (total: ' + result.total_count + ')');
+      if (result.messages.length > 0) {
+        var m = result.messages[0];
+        Logger.log('[ELWIS] Sample[0]: ' + m.notice_id + ' | ' + m.fairway_name + ' | ' + (m.contents || '').slice(0, 80));
+      }
     } else {
-      var elements = parseElwisResponse_(xmlText);
-      Logger.log('[ELWIS] FTM Total: ' + elements.length);
-      if (elements.length > 0) {
-        var s = parseElwisNotice_(elements[0], 'FTM');
-        Logger.log('[ELWIS] Sample[0] noticeId=' + (s ? s[1] : 'null') + ' area=' + (s ? s[4] : 'null'));
-      }
-      var fw = [];
-      for (var i = 0; i < elements.length; i++) {
-        try {
-          var ch = elements[i].getChildren();
-          for (var j = 0; j < ch.length; j++) {
-            try { if (ch[j].getName() === 'fairway_name') { var a = ch[j].getText(); if (a && fw.indexOf(a) < 0) fw.push(a); } } catch(e) {}
-          }
-        } catch(e) {}
-      }
-      if (fw.length > 0) Logger.log('[ELWIS] Wasserstrassen: ' + fw.slice(0,5).join(' | '));
+      var elements = parseElwisResponse_(result.xml);
+      Logger.log('[ELWIS] FTM via SOAP: ' + elements.length + ' result_message Elemente');
     }
-  } catch (e) { Logger.log('[ELWIS] SOAP Fehler: ' + e.message); }
+  } catch (e) { Logger.log('[ELWIS] Fehler: ' + e.message); }
   Logger.log('[ELWIS] === DIAGNOSE ENDE ===');
 }
 
@@ -298,5 +368,5 @@ function runElwisStagingTest() {
 }
 
 // ===========================================================================
-// END ELWIS INTEGRATION – Wave Bite 30.04.2026 – FIX v2
+// END ELWIS INTEGRATION – Wave Bite 30.04.2026 – PROXY v3
 // ===========================================================================
