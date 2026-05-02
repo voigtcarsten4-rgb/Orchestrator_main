@@ -36,6 +36,15 @@ All tasks entering the system are routed according to these principles:
 | Local file / desktop review | A-14 Desktop and File Hygiene Agent | — |
 | Integration planning request | A-15 Integration Planning Agent | — |
 | New project intake | A-01 Master Orchestrator (initiates W-02) | A-13 Business Operations Summary Agent |
+| Strategy / OKR / decision-memo request | A-16 CEO and Strategy Agent | A-22 Research Agent (evidence) |
+| Lead, deal, pipeline, follow-up, account briefing | A-17 Sales and CRM Agent | A-22 (account research), A-09 (delivery drafts) |
+| Billing, invoice, refund, dispute, finance summary | A-18 Finance Agent | A-13 (operations context), A-21 (refund-policy review) |
+| Rankings, content gaps, mentions, link analytics, content brief | A-19 Marketing and SEO Agent | A-08 (briefs feed content), A-22 (competitor research) |
+| Brand audit, asset render, brand drift, design brief | A-20 Design and Brand Agent | A-07 (asset planning), A-08 (copy alignment) |
+| Contract draft, clause comparison, signature status, inbound contract memo | A-21 Legal and Contract Agent | A-17 (commercial terms), A-09 (delivery drafts) |
+| Research, competitor profile, signal scan, evidence collection | A-22 Research and Intelligence Agent | A-16, A-17, A-19, A-23 (downstream consumers) |
+| Social-media post, calendar, atomization, engagement, trend digest | A-23 Social Media Agent | A-08 (long-form source), A-19 (briefs), A-20 (assets), A-12 (LinkedIn long-form only) |
+| Personal task, travel, household, personal admin, learning | A-24 Personal Life and Household Agent | A-10 (read-only calendar handshake) |
 
 ---
 
@@ -55,6 +64,15 @@ All tasks entering the system are routed according to these principles:
 | Communication draft requested | W-10 Communication Draft Preparation | A-12 Communication Agent |
 | Local file review triggered | W-11 Desktop and File Intake Review | A-14 File Hygiene Agent |
 | Report generation requested | W-12 Report Generation and Approval | A-13 Business Operations Summary Agent |
+| Strategy view / OKR / decision memo / foresight requested | W-13 Strategy Briefing and OKR Drafting | A-16 CEO and Strategy Agent |
+| Sales task requested or weekly pipeline hygiene | W-14 Sales Pipeline Cycle | A-17 Sales and CRM Agent |
+| Finance view requested or daily reconciliation | W-15 Finance Reconciliation Cycle | A-18 Finance Agent |
+| Marketing task requested or weekly visibility scan | W-16 Marketing Visibility Cycle | A-19 Marketing and SEO Agent |
+| Design task requested or monthly brand audit | W-17 Brand Audit and Asset Production | A-20 Design and Brand Agent |
+| Legal task or contract handoff | W-18 Contract Lifecycle | A-21 Legal and Contract Agent |
+| Research request or weekly signal scan | W-19 Research and Intelligence Cycle | A-22 Research and Intelligence Agent |
+| Social task or weekly calendar planning | W-20 Social Media Production Cycle | A-23 Social Media Agent |
+| Personal task or daily personal plan | W-21 Personal Day Planning and Life Cycle | A-24 Personal Life and Household Agent |
 
 ---
 
@@ -73,6 +91,15 @@ All tasks entering the system are routed according to these principles:
 | Generated assets | `/assets/generated/[project-id]/` |
 | Daily briefings | `/assets/briefings/daily/[YYYY-MM-DD]-briefing.md` |
 | Handoff records | `/automation/handoffs/[workflow-id]-[step].md` |
+| Strategy artifacts | `/data/drafts/strategy/` |
+| Sales drafts and briefings | `/data/drafts/sales/` |
+| Finance summaries and proposals | `/data/drafts/finance/` |
+| Marketing reports and briefs | `/data/drafts/marketing/` |
+| Design audits and renders | `/data/drafts/design/` |
+| Legal drafts and memos | `/data/drafts/legal/` |
+| Research briefs and evidence | `/data/drafts/research/` |
+| Social-media calendars and posts | `/data/drafts/social/` |
+| Personal-life drafts (privacy boundary) | `/data/drafts/personal/` |
 
 ---
 
@@ -102,6 +129,10 @@ The following systems are **never targeted automatically** without explicit appr
 - App deployment or build pipeline
 - Repository main branch modifications
 - Any live integration endpoint
+- Any payment, refund, chargeback, or subscription change (A-18 scope)
+- Any contract send or signature (A-21 scope)
+- Any social-media publish or schedule (A-12 / A-23 scope)
+- Any cross-domain leak of personal data into business folders (A-24 privacy boundary)
 
 ---
 

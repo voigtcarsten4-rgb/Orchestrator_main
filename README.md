@@ -58,10 +58,12 @@ This is **not** a standard application repository. It is an orchestration layer 
 | System overview | [docs/architecture/system-overview.md](docs/architecture/system-overview.md) |
 | Orchestration model | [docs/orchestration/orchestrator-model.md](docs/orchestration/orchestrator-model.md) |
 | Agent inventory | [docs/agents/agent-inventory.md](docs/agents/agent-inventory.md) |
+| Agent extensions (plugins / connectors / MCPs) | [docs/agents/agent-extensions.md](docs/agents/agent-extensions.md) |
 | Workflow inventory | [docs/workflows/workflow-inventory.md](docs/workflows/workflow-inventory.md) |
 | Governance rules | [docs/governance/automation-governance.md](docs/governance/automation-governance.md) |
 | Approval model | [docs/governance/approval-model.md](docs/governance/approval-model.md) |
 | Integration roadmap | [docs/integrations/integration-roadmap.md](docs/integrations/integration-roadmap.md) |
+| External repositories (curated) | [docs/integrations/external-repositories.md](docs/integrations/external-repositories.md) |
 | Operating goal | [docs/project/operating-goal.md](docs/project/operating-goal.md) |
 | Copilot instructions | [.github/copilot-instructions.md](.github/copilot-instructions.md) |
 

@@ -131,6 +131,125 @@ domain_routes:
     mode: documentation_only
     no_live_connections: true
 
+  strategy:
+    agent: A-16
+    name: "CEO and Strategy Agent"
+    triggers:
+      - strategy_view_requested
+      - weekly_strategy_briefing
+      - quarterly_okr_draft
+      - a22_evidence_ready_for_a16
+    consumes_from: [A-13, A-17, A-18, A-19, A-22]
+    mode: drafts_only
+
+  sales_crm:
+    agent: A-17
+    name: "Sales and CRM Agent"
+    triggers:
+      - sales_task_requested
+      - weekly_pipeline_hygiene
+      - a22_account_research_ready_for_a17
+    output_routes:
+      - outbound_email_drafts: A-09
+      - outbound_linkedin_drafts: A-12
+      - contract_request: A-21
+    requires_approval_before_send: true
+    requires_approval_for_crm_writes: true
+
+  finance:
+    agent: A-18
+    name: "Finance Agent"
+    triggers:
+      - finance_view_requested
+      - daily_finance_summary
+    output_routes:
+      - daily_summary_for_ops: A-13
+    requires_approval_before_money_movement: true
+    approval_level: elevated_per_item
+    mode: drafts_only
+
+  marketing_seo:
+    agent: A-19
+    name: "Marketing and SEO Agent"
+    triggers:
+      - marketing_task_requested
+      - weekly_marketing_rankings
+      - ranking_shift_threshold_crossed
+      - reputational_mention_detected
+    output_routes:
+      - content_brief_for_a08: A-08
+      - signals_for_a16: A-16
+      - signals_for_a23: A-23
+
+  design_brand:
+    agent: A-20
+    name: "Design and Brand Agent"
+    triggers:
+      - design_task_requested
+      - monthly_brand_audit
+      - asset_gap_from_a07
+      - campaign_brief_from_a19
+    output_routes:
+      - approved_renders_for_assets: A-07
+    brand_rule_change_level: elevated
+
+  legal_contract:
+    agent: A-21
+    name: "Legal and Contract Agent"
+    triggers:
+      - legal_task_requested
+      - weekly_signature_status
+      - inbound_contract_received
+      - contract_request_from_a17
+    requires_approval_before: true
+    approval_type: legal_task_request_approval
+    requires_approval_per_send: true
+    approval_level_per_send: elevated
+    mode: drafts_only_never_signs
+
+  research_intelligence:
+    agent: A-22
+    name: "Research and Intelligence Agent"
+    triggers:
+      - research_task_requested
+      - weekly_signal_scan
+      - commission_from_a16
+      - commission_from_a17
+      - commission_from_a19
+      - commission_from_a23
+    output_routes:
+      - profiles_briefs_signals: [A-16, A-17, A-19, A-23]
+    paid_source_approval_required: true
+
+  social_media:
+    agent: A-23
+    name: "Social Media Agent"
+    triggers:
+      - social_task_requested
+      - weekly_social_calendar
+      - a19_brief_ready
+      - a08_long_form_approved
+      - trend_signal_from_a22
+    parallel_with: A-12
+    distinction_from_a12: "A-12 owns long-form LinkedIn / professional outreach; A-23 owns broader multi-platform mix"
+    requires_approval_before_publish: true
+    no_auto_publish: true
+
+  personal_life:
+    agent: A-24
+    name: "Personal Life and Household Agent"
+    triggers:
+      - personal_task_requested
+      - daily_personal_plan
+      - travel_request_input
+      - household_threshold_reached
+      - admin_renewal_lookahead
+    privacy_boundary: strict
+    storage_path_prefix: "/data/*/personal/"
+    must_never_share_with: [A-11, A-13, A-16]
+    calendar_handshake_with: A-10
+    handshake_mode: read_only
+
 # ─── Workflow-to-Agent Sequence Map ────────────────────────────────────────
 
 workflow_routes:
@@ -215,3 +334,75 @@ workflow_routes:
     primary_agent: A-13
     trigger: report_requested
     gate: human_approval_required_for_external
+
+  W-13:
+    name: "Strategy Briefing and OKR Drafting"
+    primary_agent: A-16
+    trigger: strategy_view_requested
+    consumes_from: [A-13, A-17, A-18, A-19, A-22]
+    gate: human_approval_required
+    elevated_gate_for_external_distribution: true
+
+  W-14:
+    name: "Sales Pipeline Cycle"
+    primary_agent: A-17
+    trigger: sales_task_requested
+    optional_research: A-22
+    gate: human_approval_required_per_outbound
+
+  W-15:
+    name: "Finance Reconciliation Cycle"
+    primary_agent: A-18
+    trigger: finance_view_requested
+    gate: human_approval_required
+    elevated_gate_per_money_movement: true
+
+  W-16:
+    name: "Marketing Visibility Cycle"
+    primary_agent: A-19
+    trigger: marketing_task_requested
+    optional_research: A-22
+    downstream_brief: A-08
+    gate: human_approval_required
+
+  W-17:
+    name: "Brand Audit and Asset Production"
+    primary_agent: A-20
+    trigger: design_task_requested
+    upstream: [A-07, A-19]
+    gate: human_approval_required
+    elevated_gate_for_brand_rule_change: true
+
+  W-18:
+    name: "Contract Lifecycle"
+    primary_agent: A-21
+    trigger: legal_task_requested
+    upstream_optional: A-17
+    gate: human_approval_required
+    elevated_gate_per_send: true
+    never_signs: true
+
+  W-19:
+    name: "Research and Intelligence Cycle"
+    primary_agent: A-22
+    trigger: research_task_requested
+    consumers: [A-16, A-17, A-19, A-23]
+    gate: human_approval_required
+
+  W-20:
+    name: "Social Media Production Cycle"
+    primary_agent: A-23
+    trigger: social_task_requested
+    upstream: [A-08, A-19, A-20, A-22]
+    gate: human_approval_required
+    no_auto_publish: true
+
+  W-21:
+    name: "Personal Day Planning and Life Cycle"
+    primary_agent: A-24
+    trigger: personal_task_requested
+    calendar_handshake: A-10
+    handshake_mode: read_only
+    privacy_boundary: strict
+    gate: human_approval_required
+    elevated_gate_per_booking: true

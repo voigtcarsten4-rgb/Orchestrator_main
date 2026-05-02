@@ -1,9 +1,9 @@
 # System Ready — Full Architecture Overview
 
-**Document:** `/docs/system/system-ready.md`  
-**Status:** SYSTEM ACTIVE  
-**Version:** 1.0  
-**Date:** 2026-04-21  
+**Document:** `/docs/system/system-ready.md`
+**Status:** SYSTEM ACTIVE — EXPANDED
+**Version:** 2.0
+**Date:** 2026-05-02
 **Repository:** voigtcarsten4-rgb/Orchestrator_main
 
 ---
@@ -12,66 +12,59 @@
 
 | Component | Status | Count |
 |-----------|--------|-------|
-| Agent definitions | ✅ Complete | 15 / 15 |
-| Workflow definitions | ✅ Complete | 12 / 12 |
-| Agent prompts | ✅ Complete | 15 / 15 |
-| Workflow prompts | ✅ Complete | 12 / 12 |
+| Agent definitions | ✅ Complete | 24 / 24 |
+| Workflow definitions | ✅ Complete | 21 / 21 |
+| Agent prompts | ⚠️ 23 of 24 (master-orchestrator prompt pre-existing gap) | 23 / 24 |
+| Workflow prompts | ✅ Complete | 21 / 21 |
 | Prompt templates | ✅ Complete | 4 / 4 |
-| Config files | ✅ Complete | 4 / 4 |
+| Config files | ✅ Complete (routing + triggers + approvals + system) | 4 / 4 |
 | Copilot instructions | ✅ Complete | 1 / 1 |
-| Governance documents | ✅ Complete | 2 / 2 |
-| Data folder structure | ✅ Complete | 9 folders |
+| Governance documents | ✅ Complete (incl. Section 8 token-optimization defaults) | 2 / 2 |
+| Data folder structure | ✅ Expanded for all new domains | 9+ folders |
+| External repository registry | ✅ 58 entries across 20 categories | 58 |
+| Per-agent extension matrix | ✅ Complete | 24 / 24 |
 
-**Overall:** ✅ **System is ready for operation.**
+**Overall:** ✅ **System is ready for operation. First activation briefing has been produced (`docs/system/2026-05-02-system-activation-briefing.md`).**
 
 ---
 
 ## Architecture Overview
 
-This system is a seven-layer AI-assisted business operating system:
-
 ```
 ┌─────────────────────────────────────────────┐
-│  Layer 1 — Orchestration Layer              │
-│  Master Orchestrator Agent (A-01)           │
-│  Routes all tasks, enforces governance      │
+│  Layer 1 — Orchestration                    │
+│  Master Orchestrator (A-01)                 │
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
-│  Layer 2 — Agent Layer                      │
-│  15 specialised agents (A-01 to A-15)       │
-│  Each with defined scope, in/out, triggers  │
+│  Layer 2 — Agents (24)                      │
+│  A-01 → A-15  Foundation                    │
+│  A-16 → A-22  Business top-level            │
+│  A-23         Social media (multi-platform) │
+│  A-24         Personal life (privacy-fenced)│
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
-│  Layer 3 — Workflow Layer                   │
-│  12 defined workflows (W-01 to W-12)        │
-│  Step-by-step sequences with approval gates │
+│  Layer 3 — Workflows (21, W-01 → W-21)      │
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
-│  Layer 4 — Prompt Layer                     │
-│  15 agent prompts + 12 workflow prompts     │
-│  4 reusable templates                       │
+│  Layer 4 — Prompts (agents + workflows)     │
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
-│  Layer 5 — Data and Output Layer            │
-│  Structured /data/ paths for all states     │
-│  inbox → raw → extracted → mapped →         │
-│  normalized → drafts → exports              │
+│  Layer 5 — Data and Output                  │
+│  All draft + reference folders pre-created  │
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
-│  Layer 6 — Governance Layer                 │
-│  automation-governance.md + approval-model  │
-│  config/approvals.yaml + copilot-instr.     │
+│  Layer 6 — Governance                       │
+│  Section 8: token optimization MANDATORY    │
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
-│  Layer 7 — Integration Layer                │
-│  Planned integrations (documentation only)  │
-│  No live connections until formally approved│
+│  Layer 7 — Integrations                     │
+│  Documentation only — none active           │
 └─────────────────────────────────────────────┘
 ```
 
@@ -79,74 +72,68 @@ This system is a seven-layer AI-assisted business operating system:
 
 ## All Agents
 
-| ID | Agent Name | Domain | Status | Mode |
-|----|-----------|--------|--------|------|
-| A-01 | Master Orchestrator Agent | System-wide coordination | ✅ Active | Full |
-| A-02 | Repository and System Agent | Repo health, documentation | ✅ Active | Full |
-| A-03 | Website Extraction Agent | Deep website content extraction | ✅ Active | Full |
-| A-04 | Content Structuring Agent | Normalize and classify content | ✅ Active | Full |
-| A-05 | App Mapping Agent | Map content to app schemas | ✅ Active | Full |
-| A-06 | App Differentiation Agent | Derive differentiated app variants | ✅ Active | Full |
-| A-07 | Asset and Image Planning Agent | Audit and plan visual assets | ✅ Active | Full |
-| A-08 | Content Generation Agent | Produce copy, CTAs, FAQs | ✅ Active | Full |
-| A-09 | Email Triage and Drafting Agent | Email classification and drafts | ✅ Active | Full |
-| A-10 | Calendar and Scheduling Agent | Schedule extraction, conflict detection | ✅ Active | Full |
-| A-11 | Daily Briefing and Operations Agent | Daily priority compilation | ✅ Active | Full |
-| A-12 | LinkedIn and Communication Agent | Social/business communication drafts | ✅ Active | Full |
-| A-13 | Business Operations Summary Agent | Managerial reporting | ✅ Active | Full |
-| A-14 | Desktop and File Hygiene Agent | Local file classification plan | ✅ Active | Analysis-only |
-| A-15 | Integration Planning Agent | Future integration definitions | ✅ Active | Documentation-only |
+| ID | Agent Name | Domain | Mode |
+|----|-----------|--------|------|
+| A-01 | Master Orchestrator | Coordination | Full |
+| A-02 | Repository and System | Repo health | Full |
+| A-03 | Website Extraction | Website ingestion | Full |
+| A-04 | Content Structuring | Normalize / classify | Full |
+| A-05 | App Mapping | Content → schema | Full |
+| A-06 | App Differentiation | Variants | Full |
+| A-07 | Asset and Image Planning | Visual assets | Full |
+| A-08 | Content Generation | Copy / CTAs / FAQs | Full |
+| A-09 | Email Triage and Drafting | Email | Full |
+| A-10 | Calendar and Scheduling | Schedule / conflicts | Full |
+| A-11 | Daily Briefing and Operations | Morning compile | Full |
+| A-12 | LinkedIn and Communication | Long-form / professional | Full |
+| A-13 | Business Operations Summary | Reporting | Full |
+| A-14 | Desktop and File Hygiene | Local files | Analysis-only |
+| A-15 | Integration Planning | Integration registry | Documentation-only |
+| A-16 | CEO and Strategy | OKRs / decisions / foresight | Drafts-only |
+| A-17 | Sales and CRM | Pipeline / outbound | Drafts-only |
+| A-18 | Finance | Reconciliation / refunds | Drafts-only — money never moves autonomously |
+| A-19 | Marketing and SEO | Rankings / gaps / mentions | Drafts-only |
+| A-20 | Design and Brand | Brand audits / renders | Drafts-only |
+| A-21 | Legal and Contract | Contract drafts / clauses | Drafts-only — never sends, never signs |
+| A-22 | Research and Intelligence | Cited research / signals | Drafts-only |
+| A-23 | Social Media | Multi-platform calendar | Drafts-only — no auto-publish |
+| A-24 | Personal Life and Household | Day plan / travel / household | Privacy-fenced — never crosses to business |
 
 ---
 
 ## All Workflows
 
-| ID | Workflow Name | Primary Agent | Trigger | Approval Level |
-|----|--------------|---------------|---------|----------------|
-| W-01 | Repository Initialization | A-02 | Repo created / health check | GATE |
-| W-02 | Project Intake | A-01 | Human initiates project | GATE |
-| W-03 | Website Ingestion | A-03 | URL provided and approved | GATE (×2) |
-| W-04 | Extraction to Structured Data | A-04 | W-03 approved | GATE |
-| W-05 | Structured Data to App Mapping | A-05 | W-04 approved | GATE |
-| W-06 | App Mapping to Differentiation | A-06 | W-05 approved | ELEVATED |
-| W-07 | Differentiation to Content and Assets | A-07 + A-08 | W-06 approved | GATE |
-| W-08 | Daily Operations Briefing | A-11 | Morning trigger / manual | None (auto-compile) |
-| W-09 | Email to Calendar and Follow-up | A-09 + A-10 | Email batch provided | GATE (per-item) |
-| W-10 | Communication Draft Preparation | A-12 | Draft requested | GATE |
-| W-11 | Desktop and File Intake Review | A-14 | File listing provided | BLOCKED (analysis-only) |
-| W-12 | Report Generation and Approval | A-13 | Requested / scheduled | GATE + ELEVATED (external) |
+| ID | Workflow | Primary Agent | Approval Level |
+|----|---|---|---|
+| W-01 | Repository Initialization | A-02 | GATE |
+| W-02 | Project Intake | A-01 | GATE |
+| W-03 | Website Ingestion | A-03 | GATE (×2) |
+| W-04 | Extraction → Structured Data | A-04 | GATE |
+| W-05 | Structured Data → App Mapping | A-05 | GATE |
+| W-06 | App Mapping → Differentiation | A-06 | ELEVATED |
+| W-07 | Differentiation → Content + Assets | A-07 + A-08 | GATE |
+| W-08 | Daily Operations Briefing | A-11 | None (auto-compile) |
+| W-09 | Email → Calendar + Follow-up | A-09 + A-10 | GATE per item |
+| W-10 | Communication Draft Preparation | A-12 | GATE |
+| W-11 | Desktop and File Intake Review | A-14 | BLOCKED (analysis-only) |
+| W-12 | Report Generation and Approval | A-13 | GATE + ELEVATED (external) |
+| W-13 | Strategy Briefing and OKR Drafting | A-16 | GATE + ELEVATED (external) |
+| W-14 | Sales Pipeline Cycle | A-17 | GATE per outbound |
+| W-15 | Finance Reconciliation Cycle | A-18 | GATE + ELEVATED per money movement |
+| W-16 | Marketing Visibility Cycle | A-19 | GATE |
+| W-17 | Brand Audit and Asset Production | A-20 | GATE + ELEVATED (rule change) |
+| W-18 | Contract Lifecycle | A-21 | GATE + ELEVATED per send |
+| W-19 | Research and Intelligence Cycle | A-22 | GATE |
+| W-20 | Social Media Production Cycle | A-23 | GATE — no auto-publish |
+| W-21 | Personal Day Planning and Life Cycle | A-24 | GATE + ELEVATED per booking |
 
 ---
 
-## Workflow Chain (Core Pipeline)
+## Token Optimization (Mandatory by Default)
 
-```
-W-02 (Project Intake)
-  └─► W-03 (Website Ingestion)
-        └─► W-04 (Extraction to Structured)
-              └─► W-05 (Structured to App Mapping)
-                    └─► W-06 (App Mapping to Differentiation)
-                          └─► W-07 (Differentiation to Content + Assets)
-                                └─► W-10 (Communication Drafts) [optional]
-```
+Anchored in `docs/governance/automation-governance.md` Section 8 and `docs/integrations/external-repositories.md` Section 4. Every agent runtime, integration, or workflow must apply:
 
-**Independent Workflows (run anytime):**
-- W-08 Daily Briefing
-- W-09 Email to Calendar
-- W-11 File Hygiene
-- W-12 Report Generation
-- W-01 Repository Health (can run anytime)
-
----
-
-## Config Files
-
-| File | Purpose |
-|------|---------|
-| `/config/routing.yaml` | Domain-to-agent routing, workflow-to-agent sequences |
-| `/config/triggers.yaml` | All event, human, schedule, and chained triggers |
-| `/config/approvals.yaml` | Approval levels for all workflow gates and outputs |
-| `/config/system.yaml` | System registry, agent/workflow lists, data paths, safety limits |
+D-1 Prompt caching · D-2 Local token counting · D-3 Compression > 4k tokens · D-4 Semantic cache for recurring runs · D-5 Unified gateway · D-6 Cost logging · D-7 Prompt-block reuse · D-8 RAG over inlined documents
 
 ---
 
@@ -154,53 +141,44 @@ W-02 (Project Intake)
 
 | Rule | Status |
 |------|--------|
-| No file deletion without explicit human confirmation per file | ✅ Enforced |
-| Desktop cleanup is analysis-first mode only | ✅ Enforced (A-14 / W-11) |
-| All communication outputs are draft-only | ✅ Enforced |
-| External integrations remain DISABLED (documentation only) | ✅ Enforced (A-15 / config) |
-| No email sent by any agent | ✅ Enforced |
+| No file deletion without per-file confirmation | ✅ Enforced |
+| Desktop cleanup is analysis-first | ✅ Enforced (A-14 / W-11) |
+| All communication is draft-only | ✅ Enforced |
+| External integrations remain DISABLED | ✅ Enforced (A-15 / config) |
+| No email sent autonomously | ✅ Enforced |
 | No live platform posting | ✅ Enforced |
-| Raw data in /data/raw/ is immutable | ✅ Enforced |
-| Scheduled triggers disabled until explicitly enabled | ✅ Enforced (triggers.yaml) |
+| Raw data immutable | ✅ Enforced |
+| Schedule triggers disabled until enabled | ✅ Enforced (triggers.yaml) |
+| No money moves autonomously | ✅ Enforced (A-18 / W-15 / approvals.yaml) |
+| Contracts never sent or signed autonomously | ✅ Enforced (A-21 / W-18 / approvals.yaml) |
+| Travel never booked autonomously | ✅ Enforced (A-24 / W-21 / approvals.yaml) |
+| Personal data never crosses to business | ✅ Enforced (A-24 / approvals.yaml: BLOCKED) |
+| Token-optimization defaults | ✅ Mandatory (governance Section 8) |
 
 ---
 
-## Next Activation Steps
+## Activation Sequence (Recommended)
 
-### Immediate (system is ready to use now)
+The first concrete output of the expanded system is:
 
-1. **Run W-01** — execute a repository health check to confirm everything is in place
-   - Ask A-02 to perform a full structure audit
-   - Review the health report output
+> **`docs/system/2026-05-02-system-activation-briefing.md`**
 
-2. **Run W-02** — initiate your first project
-   - Provide a project ID, client name, type, and scope
-   - Confirm the project brief
-   - The system will route to the appropriate downstream workflow
+It contains three options (A read-only foundation, B business cadences, C full activation) plus a recommendation. Read that briefing first, then approve the activation step. (Future strategy briefings produced by A-16 land in `data/drafts/strategy/`, which is gitignored.)
 
-3. **Run W-08** — request your first daily briefing
-   - Ask A-11 to compile the briefing
-   - Review the output in `/assets/briefings/`
+### Immediate (no enablement needed)
 
-4. **Run W-09** — process your first email batch
-   - Place email batch in `/data/inbox/email/[YYYY-MM-DD]-email-batch.md`
-   - Ask A-09 to triage
+1. **Run W-01** — repository health check via A-02 (validates the new agents and workflows are wired correctly)
+2. **Run W-13** — request a strategy briefing from A-16 on a real topic
+3. **Run W-19** — commission research from A-22 on one well-scoped topic
+4. **Run W-08 / W-12** — existing operations cadence still works as before
 
-### Before Enabling Scheduled Triggers
+### Schedule triggers (each requires explicit human enablement)
 
-Complete these steps before enabling any trigger in `config/triggers.yaml`:
-- [ ] Run W-01 and confirm health report is clean
-- [ ] Review each trigger's schedule and confirm it is appropriate
-- [ ] Set `enabled: true` for the desired triggers one at a time
-- [ ] Confirm first run of each trigger manually before relying on automation
+All schedule triggers in `config/triggers.yaml` are `enabled: false`. The activation briefing recommends enabling them in the order: T-03-08 (sales hygiene), T-03-10 (rankings), T-03-13 (signal scan), T-03-14 (social calendar), T-03-06 (strategy briefing) — only after corresponding integrations are approved.
 
-### Before Activating Any Integration
+### Integrations (each requires ELEVATED approval)
 
-Integration activation is a formal process (see A-15 / `/docs/integrations/`):
-- [ ] Request A-15 to produce an integration specification for the desired service
-- [ ] Review the readiness checklist
-- [ ] Obtain elevated approval
-- [ ] Integration remains in `[PLANNED]` status until all checklist items are confirmed
+Integration activation flows through `docs/integrations/integration-roadmap.md` and the approval model. The relevant MCP servers for each new agent are catalogued per agent in `docs/agents/agent-extensions.md`.
 
 ---
 
@@ -208,13 +186,15 @@ Integration activation is a formal process (see A-15 / `/docs/integrations/`):
 
 | Document | Path |
 |----------|------|
-| Automation governance rules | `/docs/governance/automation-governance.md` |
+| Automation governance | `/docs/governance/automation-governance.md` |
 | Approval model | `/docs/governance/approval-model.md` |
 | Agent inventory | `/docs/agents/agent-inventory.md` |
+| Agent extensions | `/docs/agents/agent-extensions.md` |
 | Workflow inventory | `/docs/workflows/workflow-inventory.md` |
-| System architecture | `/docs/architecture/system-overview.md` |
-| Copilot instructions | `/.github/copilot-instructions.md` |
-| Prompt inventory | `/automation/prompts/README.md` |
+| External repositories | `/docs/integrations/external-repositories.md` |
+| Integration roadmap | `/docs/integrations/integration-roadmap.md` |
+| Routing logic | `/docs/orchestration/routing-logic.md` |
+| First activation briefing | `/docs/system/2026-05-02-system-activation-briefing.md` |
 
 ---
 

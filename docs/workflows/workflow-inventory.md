@@ -20,6 +20,15 @@
 | W-10 | Communication Draft Preparation | Draft request received | A-12 | [w-10-communication-draft.md](../../automation/workflows/w-10-communication-draft.md) |
 | W-11 | Desktop and File Intake Review | File review triggered | A-14 | [w-11-desktop-file-review.md](../../automation/workflows/w-11-desktop-file-review.md) |
 | W-12 | Report Generation and Approval | Report requested | A-13 | [w-12-report-generation.md](../../automation/workflows/w-12-report-generation.md) |
+| W-13 | Strategy Briefing and OKR Drafting | Strategy view requested or quarterly cadence | A-16 | [w-13-strategy-briefing.md](../../automation/workflows/w-13-strategy-briefing.md) |
+| W-14 | Sales Pipeline Cycle | Sales task requested or weekly hygiene cadence | A-17 | [w-14-sales-pipeline-cycle.md](../../automation/workflows/w-14-sales-pipeline-cycle.md) |
+| W-15 | Finance Reconciliation Cycle | Finance view requested or daily cadence | A-18 | [w-15-finance-reconciliation.md](../../automation/workflows/w-15-finance-reconciliation.md) |
+| W-16 | Marketing Visibility Cycle | Marketing task requested or weekly cadence | A-19 | [w-16-marketing-visibility.md](../../automation/workflows/w-16-marketing-visibility.md) |
+| W-17 | Brand Audit and Asset Production | Design task requested or monthly cadence | A-20 | [w-17-brand-audit.md](../../automation/workflows/w-17-brand-audit.md) |
+| W-18 | Contract Lifecycle | Legal task or contract handoff | A-21 | [w-18-contract-lifecycle.md](../../automation/workflows/w-18-contract-lifecycle.md) |
+| W-19 | Research and Intelligence Cycle | Research request or weekly signal scan | A-22 | [w-19-research-cycle.md](../../automation/workflows/w-19-research-cycle.md) |
+| W-20 | Social Media Production Cycle | Social task or weekly calendar cadence | A-23 | [w-20-social-production.md](../../automation/workflows/w-20-social-production.md) |
+| W-21 | Personal Day Planning and Life Cycle | Personal task or daily plan cadence | A-24 | [w-21-personal-day-planning.md](../../automation/workflows/w-21-personal-day-planning.md) |
 
 ---
 

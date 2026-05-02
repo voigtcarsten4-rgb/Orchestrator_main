@@ -15,6 +15,10 @@ No integration is activated without formal human approval. This document defines
 
 All integration configurations, once approved, are stored in `/config/integrations/`.
 
+A curated list of external GitHub repositories that are referenced by, or
+candidates for, these integrations is maintained in
+[`external-repositories.md`](external-repositories.md).
+
 ---
 
 ## 2. Integration Registry
