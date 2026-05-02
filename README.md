@@ -62,6 +62,7 @@ This is **not** a standard application repository. It is an orchestration layer 
 | Governance rules | [docs/governance/automation-governance.md](docs/governance/automation-governance.md) |
 | Approval model | [docs/governance/approval-model.md](docs/governance/approval-model.md) |
 | Integration roadmap | [docs/integrations/integration-roadmap.md](docs/integrations/integration-roadmap.md) |
+| External repositories (curated) | [docs/integrations/external-repositories.md](docs/integrations/external-repositories.md) |
 | Operating goal | [docs/project/operating-goal.md](docs/project/operating-goal.md) |
 | Copilot instructions | [.github/copilot-instructions.md](.github/copilot-instructions.md) |
 
