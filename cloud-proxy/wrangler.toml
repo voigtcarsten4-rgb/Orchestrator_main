@@ -1,0 +1,6 @@
+name = "wave-bite-elwis-proxy"
+main = "elwis-worker.js"
+compatibility_date = "2026-01-01"
+
+# Optional: API key set via `wrangler secret put PROXY_API_KEY`
+# (do NOT put secrets in this file)
