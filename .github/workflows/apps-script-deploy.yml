@@ -1,0 +1,78 @@
+name: Apps Script - Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - claude/debug-apps-script-wZ6bm
+    paths:
+      - 'apps-script/**'
+      - '.github/workflows/apps-script-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      create_version:
+        description: 'Also create a new versioned deployment (yes/no)'
+        required: false
+        default: 'yes'
+
+concurrency:
+  group: apps-script-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Push & deploy to Google Apps Script
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install clasp
+        run: npm install -g @google/clasp@2.4.2
+
+      - name: Validate required secret
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "::error::Missing repo secret CLASPRC_JSON. See apps-script/README.md for the one-time setup."
+            exit 1
+          fi
+
+      - name: Write clasp credentials
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          chmod 600 "$HOME/.clasprc.json"
+
+      - name: Show project info
+        working-directory: apps-script
+        run: |
+          echo "Script ID: $(node -p "require('./.clasp.json').scriptId")"
+          clasp --version
+
+      - name: Push to Apps Script
+        working-directory: apps-script
+        run: clasp push --force
+
+      - name: Create versioned deployment
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.create_version == 'yes' }}
+        working-directory: apps-script
+        run: |
+          DESC="auto-deploy ${GITHUB_SHA::7} on $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          clasp deploy --description "$DESC"
+
+      - name: Refresh credentials back to secret format
+        if: always()
+        run: |
+          if [ -f "$HOME/.clasprc.json" ]; then
+            echo "::notice::clasp credentials may have been refreshed. If deploys later fail with 'invalid_grant', regenerate CLASPRC_JSON locally with 'clasp login' and update the repo secret."
+          fi

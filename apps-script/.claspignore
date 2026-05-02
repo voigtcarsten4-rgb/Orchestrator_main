@@ -1,0 +1,18 @@
+# Files to ignore when pushing to Apps Script
+**/**
+!appsscript.json
+!**/*.gs
+!**/*.js
+!**/*.html
+
+# Always exclude these even if matched above
+node_modules/**
+.git/**
+.github/**
+.gitignore
+.claspignore
+.clasp.json
+package.json
+package-lock.json
+README.md
+*.md
