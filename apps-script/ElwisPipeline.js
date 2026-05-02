@@ -523,5 +523,98 @@ function seedElwisDemoRow_(sheet) {
 }
 
 // ===========================================================================
+// HOMEPAGE / DEEP DISCOVERY
+// ===========================================================================
+
+/**
+ * Lädt elwis.de, extrahiert alle <a href>, filtert nach relevanten Keywords
+ * (bekanntm|verfüg|meldung|schiffahrt|verkehrs|nautische|rss|feed|json),
+ * und probiert jeden Kandidaten mit GET. Liefert eine kompakte Liste der
+ * URLs die HTTP 200 liefern + Header- und Inhalts-Hinweise.
+ *
+ * Editor-Aufruf: runElwisHomepageScan
+ */
+function runElwisHomepageScan() {
+  var report = [];
+  var base = 'https://www.elwis.de';
+  var html;
+  try {
+    var resp = UrlFetchApp.fetch(base + '/', { muteHttpExceptions: true, followRedirects: true });
+    if (resp.getResponseCode() !== 200) {
+      report.push('FATAL: homepage HTTP ' + resp.getResponseCode());
+      Logger.log('[ELWIS-SCAN]\n' + report.join('\n'));
+      return report;
+    }
+    html = resp.getContentText('UTF-8');
+  } catch (e) {
+    report.push('FATAL: homepage ERROR ' + ((e && e.message) || e));
+    Logger.log('[ELWIS-SCAN]\n' + report.join('\n'));
+    return report;
+  }
+
+  // 1) extract every <a href="...">linktext</a>
+  var anchors = [];
+  var re = /<a\s+[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  var m;
+  while ((m = re.exec(html)) !== null) {
+    var href = m[1];
+    var label = m[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    anchors.push({ href: href, label: label });
+  }
+
+  // 2) filter for ELWIS-relevant URLs
+  var keyword = /(bekanntm|verfüg|verfueg|meldung|schiff|nautisch|rss|feed|json|hinweis|warn|sperr|nts|messageserver)/i;
+  var seen = {};
+  var candidates = [];
+  anchors.forEach(function(a) {
+    if (!a.href) return;
+    if (a.href.indexOf('#') === 0) return;
+    if (a.href.indexOf('mailto:') === 0) return;
+    var abs = a.href;
+    if (abs.indexOf('http') !== 0) {
+      abs = abs.indexOf('/') === 0 ? base + abs : base + '/' + abs;
+    }
+    if (abs.indexOf('elwis.de') < 0) return; // bleib bei ELWIS
+    if (seen[abs]) return;
+    if (!keyword.test(a.href + ' ' + a.label)) return;
+    seen[abs] = true;
+    candidates.push({ href: abs, label: a.label.slice(0, 80) });
+  });
+
+  report.push('homepage bytes=' + html.length + '  total_anchors=' + anchors.length + '  candidates=' + candidates.length);
+  report.push('');
+  report.push('--- TOP 20 CANDIDATES (status / size / content-type / title) ---');
+
+  candidates.slice(0, 20).forEach(function(c) {
+    try {
+      var t0 = Date.now();
+      var r = UrlFetchApp.fetch(c.href, { muteHttpExceptions: true, followRedirects: true });
+      var ms = Date.now() - t0;
+      var code = r.getResponseCode();
+      var hdr = r.getHeaders() || {};
+      var ct = hdr['Content-Type'] || hdr['content-type'] || '?';
+      var body = r.getContentText('UTF-8') || '';
+      var title = (body.match(/<title>([\s\S]*?)<\/title>/i) || [, ''])[1].replace(/\s+/g, ' ').trim().slice(0, 80);
+      var rss = body.indexOf('<rss') >= 0 || body.indexOf('<feed') >= 0;
+      report.push(
+        'HTTP ' + code +
+        '  ' + ms + 'ms' +
+        '  bytes=' + body.length +
+        '  rss=' + rss +
+        '  ct=' + String(ct).slice(0, 40) +
+        '  url=' + c.href +
+        '  label="' + c.label + '"' +
+        '  title="' + title + '"'
+      );
+    } catch (e) {
+      report.push('ERROR  ' + ((e && e.message) || e) + '  ' + c.href);
+    }
+  });
+
+  Logger.log('[ELWIS-SCAN]\n' + report.join('\n'));
+  return report;
+}
+
+// ===========================================================================
 // END ELWIS PIPELINE
 // ===========================================================================
