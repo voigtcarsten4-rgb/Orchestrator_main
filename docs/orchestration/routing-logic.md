@@ -64,6 +64,15 @@ All tasks entering the system are routed according to these principles:
 | Communication draft requested | W-10 Communication Draft Preparation | A-12 Communication Agent |
 | Local file review triggered | W-11 Desktop and File Intake Review | A-14 File Hygiene Agent |
 | Report generation requested | W-12 Report Generation and Approval | A-13 Business Operations Summary Agent |
+| Strategy view / OKR / decision memo / foresight requested | W-13 Strategy Briefing and OKR Drafting | A-16 CEO and Strategy Agent |
+| Sales task requested or weekly pipeline hygiene | W-14 Sales Pipeline Cycle | A-17 Sales and CRM Agent |
+| Finance view requested or daily reconciliation | W-15 Finance Reconciliation Cycle | A-18 Finance Agent |
+| Marketing task requested or weekly visibility scan | W-16 Marketing Visibility Cycle | A-19 Marketing and SEO Agent |
+| Design task requested or monthly brand audit | W-17 Brand Audit and Asset Production | A-20 Design and Brand Agent |
+| Legal task or contract handoff | W-18 Contract Lifecycle | A-21 Legal and Contract Agent |
+| Research request or weekly signal scan | W-19 Research and Intelligence Cycle | A-22 Research and Intelligence Agent |
+| Social task or weekly calendar planning | W-20 Social Media Production Cycle | A-23 Social Media Agent |
+| Personal task or daily personal plan | W-21 Personal Day Planning and Life Cycle | A-24 Personal Life and Household Agent |
 
 ---
 
