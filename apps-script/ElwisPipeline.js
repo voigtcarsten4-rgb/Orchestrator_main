@@ -41,40 +41,60 @@ function fetchAndStoreElwisNotices_() {
   const watersIndex = buildWatersIndexForElwis_(ss);
   const existing = readElwisNoticesIndex_(sheet);
 
-  const messageTypes = ['FTM', 'WRM'];
   const stats = {
     fetched: 0, parsed: 0, written: 0, updated: 0,
     skipped: 0, errors: [],
     sheet_rows_before: Object.keys(existing).length,
-    endpoint_reachable: null
+    soap_endpoint_reachable: null,
+    html_sources_used: []
   };
   const allNotices = [];
 
-  messageTypes.forEach(function(msgType) {
+  // ===== Primary: ELWIS HTML (NfB + Schleusensperrungen) =====
+  // SOAP-POST is blocked at network level from Apps Script, so we use the
+  // public HTML pages — same data, different transport.
+  var htmlSources = [
+    { url: 'https://www.elwis.de/DE/dynamisch/Nfb/',                  source: 'NfB' },
+    { url: 'https://www.elwis.de/DE/dynamisch/Schleusensperrungen/',  source: 'SCHLEUSE' }
+  ];
+  htmlSources.forEach(function(src) {
     try {
-      var xml = fetchElwisNotices_(msgType, 14);
-      if (!xml) {
-        stats.errors.push(msgType + ': empty response');
-        return;
-      }
-      stats.endpoint_reachable = true;
-      var elements = parseElwisResponse_(xml);
-      stats.fetched += elements.length;
-      for (var i = 0; i < elements.length; i++) {
-        var raw = parseElwisNotice_(elements[i], msgType);
-        if (!raw) { stats.skipped++; continue; }
-        var norm = normalizeElwisNotice_(raw, msgType);
-        if (!norm) { stats.skipped++; continue; }
-        matchElwisToWatersConservative_(norm, watersIndex);
-        allNotices.push(norm);
-        stats.parsed++;
+      var notices = fetchElwisHtmlNotices_(src.url, src.source, watersIndex, stats);
+      if (notices && notices.length > 0) {
+        stats.html_sources_used.push(src.source + ':' + notices.length);
+        allNotices.push.apply(allNotices, notices);
       }
     } catch (e) {
-      stats.errors.push(msgType + ': ' + ((e && e.message) || e));
+      stats.errors.push('HTML ' + src.source + ': ' + ((e && e.message) || e));
     }
   });
 
-  if (stats.endpoint_reachable === null) stats.endpoint_reachable = false;
+  // ===== Secondary fallback: ELWIS NTS SOAP (only if HTML returned nothing) =====
+  if (allNotices.length === 0) {
+    var messageTypes = ['FTM', 'WRM'];
+    messageTypes.forEach(function(msgType) {
+      try {
+        var xml = fetchElwisNotices_(msgType, 14);
+        if (!xml) { stats.errors.push('SOAP ' + msgType + ': empty response'); return; }
+        stats.soap_endpoint_reachable = true;
+        var elements = parseElwisResponse_(xml);
+        stats.fetched += elements.length;
+        for (var i = 0; i < elements.length; i++) {
+          var raw = parseElwisNotice_(elements[i], msgType);
+          if (!raw) { stats.skipped++; continue; }
+          var norm = normalizeElwisNotice_(raw, msgType);
+          if (!norm) { stats.skipped++; continue; }
+          matchElwisToWatersConservative_(norm, watersIndex);
+          allNotices.push(norm);
+          stats.parsed++;
+        }
+      } catch (e) {
+        stats.errors.push('SOAP ' + msgType + ': ' + ((e && e.message) || e));
+      }
+    });
+  }
+
+  if (stats.soap_endpoint_reachable === null) stats.soap_endpoint_reachable = false;
 
   // Robust demo-seed: greift bei leerem Sheet (kein notice_uid-Eintrag)
   // unabhängig davon, ob noch Reste aus einer alten Schemaversion in
@@ -210,6 +230,174 @@ function runElwisDiagnose() {
 
   Logger.log('[ELWIS-DIAG]\n' + report.join('\n'));
   return report;
+}
+
+// ---------------------------------------------------------------------------
+// HTML SCRAPER (primary source — SOAP is blocked from Apps Script)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lädt eine ELWIS-Seite (NfB / Schleusensperrungen) und extrahiert
+ * strukturierte Notice-Items aus <table>-Rows oder <li>-Listen.
+ *
+ * Die Seiten sind serverseitig gerenderte HTML von Government Site Builder
+ * mit konsistentem Markup. Der Parser ist defensiv — extrahiert <tr>/<li>
+ * mit dd.MM.yyyy-Datum, dedupliziert nach Datum+Text.
+ */
+function fetchElwisHtmlNotices_(url, sourceTag, watersIndex, stats) {
+  var resp = UrlFetchApp.fetch(url, {
+    method: 'get',
+    muteHttpExceptions: true,
+    followRedirects: true,
+    headers: { 'Accept': 'text/html,application/xhtml+xml' }
+  });
+  var code = resp.getResponseCode();
+  if (code !== 200) {
+    stats.errors.push('HTML ' + sourceTag + ': HTTP ' + code);
+    return [];
+  }
+  var html = resp.getContentText('UTF-8') || '';
+  if (!html) return [];
+  stats.fetched += 1;
+
+  var items = extractElwisItemsFromHtml_(html, url);
+  var out = [];
+  items.forEach(function(it) {
+    var norm = normalizeHtmlElwisItem_(it, sourceTag, url);
+    if (!norm) { stats.skipped++; return; }
+    matchElwisToWatersConservative_(norm, watersIndex);
+    out.push(norm);
+    stats.parsed++;
+  });
+  return out;
+}
+
+function extractElwisItemsFromHtml_(html, baseUrl) {
+  var clean = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ');
+
+  var dateRe = /\b(\d{2})\.(\d{2})\.(\d{4})\b/;
+  var items = [];
+  var seen = {};
+
+  function pushIfDated(blockHtml) {
+    if (!blockHtml) return;
+    var text = blockHtml.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    if (text.length < 12) return;
+    var m = text.match(dateRe);
+    if (!m) return;
+    if (/^(home|impressum|sitemap|datenschutz|kontakt)\b/i.test(text)) return;
+    var hrefMatch = blockHtml.match(/href\s*=\s*["']([^"'#]+)["']/i);
+    var link = hrefMatch ? absoluteUrl_(hrefMatch[1], baseUrl) : '';
+    var key = m[0] + '|' + text.slice(0, 80);
+    if (seen[key]) return;
+    seen[key] = true;
+    items.push({
+      datestr: m[0],
+      text: text,
+      title: text.length > 200 ? text.slice(0, 200) : text,
+      url: link
+    });
+  }
+
+  var trRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+  var tr;
+  while ((tr = trRe.exec(clean)) !== null) {
+    pushIfDated(tr[1]);
+  }
+  if (items.length === 0) {
+    var liRe = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
+    var li;
+    while ((li = liRe.exec(clean)) !== null) {
+      pushIfDated(li[1]);
+    }
+  }
+  return items;
+}
+
+function absoluteUrl_(href, baseUrl) {
+  if (!href) return '';
+  if (/^https?:\/\//i.test(href)) return href;
+  if (href.charAt(0) === '/') {
+    var m = baseUrl.match(/^(https?:\/\/[^\/]+)/);
+    return m ? m[1] + href : href;
+  }
+  return baseUrl.replace(/[^/]*$/, '') + href;
+}
+
+function normalizeHtmlElwisItem_(it, sourceTag, baseUrl) {
+  if (!it || !it.text) return null;
+  var ddmmyyyy = it.datestr.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  var iso = ddmmyyyy ? (ddmmyyyy[3] + '-' + ddmmyyyy[2] + '-' + ddmmyyyy[1]) : '';
+  var title    = it.title;
+  var summary  = it.text.length > 240 ? it.text.slice(0, 240) + '…' : it.text;
+  var rawText  = it.text;
+  var sourceUrl = it.url || baseUrl;
+  var lower = it.text.toLowerCase();
+  var severity   = inferSeverity_(lower);
+  var category   = inferCategoryHtml_(lower, sourceTag);
+  var validFrom = iso;
+  var validTo = '';
+  var allDates = (it.text.match(/\d{2}\.\d{2}\.\d{4}/g) || []);
+  if (allDates.length >= 2) {
+    var d2 = allDates[1].match(/(\d{2})\.(\d{2})\.(\d{4})/);
+    validTo = d2 ? (d2[3] + '-' + d2[2] + '-' + d2[1]) : '';
+  }
+  var isActive = computeIsActive_(validFrom, validTo);
+  var sortWeight = computeSortWeight_(severity, isActive);
+  var waterway = extractWaterway_(it.text);
+  var uid = sourceTag + ':' + iso + ':' + md5Short_(title);
+
+  return {
+    notice_uid: uid,
+    title: title,
+    summary: summary,
+    severity: severity,
+    category: category,
+    waterway: waterway,
+    region: '',
+    valid_from: validFrom,
+    valid_to: validTo,
+    source_url: sourceUrl,
+    match_scope: 'global',
+    match_confidence: 'none',
+    matched_water_id: '',
+    matched_station_id: '',
+    display_policy: 'global',
+    is_active: isActive,
+    sort_weight: sortWeight,
+    updated_at: new Date().toISOString(),
+    raw_type: sourceTag,
+    raw_id: iso + '|' + title.slice(0, 60),
+    raw_text: rawText.slice(0, 500),
+    published_at: validFrom,
+    source_system: 'ELWIS_HTML',
+    match_notes: ''
+  };
+}
+
+function inferCategoryHtml_(text, sourceTag) {
+  if (sourceTag === 'SCHLEUSE' || /schleus/.test(text)) return 'lock';
+  if (/sperrung|fahrverbot|gesperrt|stillgelegt/.test(text)) return 'closure';
+  if (/baustelle|bauarbeit|baumaßnahme|baumassn/.test(text)) return 'construction';
+  if (/geschwindigkeit|tempo|knoten|km\/h/.test(text)) return 'speed';
+  if (/warnung|gefahr|untiefe|hindernis/.test(text)) return 'warning';
+  if (/befahr|navig|fahrwasser|leuchtfeuer|tonne/.test(text)) return 'navigation';
+  return 'info';
+}
+
+function extractWaterway_(text) {
+  var known = /(spree|havel|elbe|oder|dahme|teltowkanal|landwehrkanal|wannsee|m[üu]ggelsee|tegeler see|nieder neuendorfer see|oranienburg|berlin-spandauer|untere havel-wasserstra(?:ß|ss)e|rhin|finowkanal|werbellin)/i;
+  var m = text.match(known);
+  return m ? m[1] : '';
+}
+
+function md5Short_(s) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, String(s || ''))
+    .map(function(b) { return ((b & 0xff) + 0x100).toString(16).slice(1); })
+    .join('').slice(0, 10);
 }
 
 // ---------------------------------------------------------------------------

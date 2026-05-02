@@ -69,9 +69,17 @@ function buildWaterDetail_(waterId) {
     region_area: summary.region_area || null,
     water_type: summary.water_type || null,
     measurements: {
-      water_temp: pickFromRefs_(refs, [
-        { table: 'readings', row: 'readingsRow', aliases: [['water_temp'], ['watertemp'], ['wassertemperatur'], ['temperatur']] }
-      ]),
+      water_temp: numericOrNull_(pickFromRefs_(refs, [
+        { table: 'readings', row: 'readingsRow', aliases: [
+          ['water_temp_c'],
+          ['water_temp'],
+          ['watertemp'],
+          ['watertempc'],
+          ['wassertemperatur'],
+          ['temperatur'],
+          ['temp']
+        ] }
+      ])),
       sichttiefe_m: numericOrNull_(pickFromRefs_(refs, [
         { table: 'readings', row: 'readingsRow', aliases: [['sichttiefe_m'], ['sichttiefe'], ['clarity']] },
         { table: 'master', row: 'masterRow', aliases: [['sichttiefe_m'], ['sichttiefe'], ['clarity']] }

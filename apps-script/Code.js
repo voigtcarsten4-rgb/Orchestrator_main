@@ -4128,6 +4128,22 @@ function fetchHydroData_(lat, lon, coopsStationId, coopsBinId, ndbcStationId, lo
     };
   }
 
+  // Skip NOAA + Open-Meteo Marine for inland European coordinates: NOAA stations
+  // are USA-only (Tides+NDBC return wrong-region or 404), and Open-Meteo Marine
+  // returns null wave/ocean_current for inland waters. Wave Bite spots are
+  // Berlin/Brandenburg lakes/rivers — wave_height defaults to 0 (calm inland),
+  // current_speed to null (Pegelonline trends would be the proper signal here).
+  const isInlandEU = nLat >= 47.0 && nLat <= 56.0 && nLon >= 5.0 && nLon <= 19.0;
+  const explicitNoaa = !!(coopsStationId || ndbcStationId);
+  if (isInlandEU && !explicitNoaa) {
+    return {
+      current_speed: null,
+      current_speed_source: "inland_skip_no_noaa_no_marine",
+      wave_height: 0,
+      wave_height_source: "inland_calm_assumed"
+    };
+  }
+
   const coops = fetchNoaaCoopsCurrents_(coopsStationId, coopsBinId, log);
   const ndbc = fetchNdbcWaveHeight_(ndbcStationId, log);
 
