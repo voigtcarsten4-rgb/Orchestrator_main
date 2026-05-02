@@ -688,12 +688,18 @@ function getElwisNotices_(params) {
       return String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
     });
 
+    var pipelineStatus = items.length > 0
+      ? 'live_data_ok'
+      : 'no_live_data_elwis_js_spa_unreachable_from_apps_script';
+
     return {
       ok: true,
       generated_at: new Date().toISOString(),
       count: items.length,
       source: sh.getName(),
       schema: schema,
+      pipeline_status: pipelineStatus,
+      live_data_available: items.length > 0,
       filters_applied: {
         active_only: activeOnly,
         limit: limitParam,

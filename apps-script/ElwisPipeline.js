@@ -46,13 +46,16 @@ function fetchAndStoreElwisNotices_() {
     skipped: 0, errors: [],
     sheet_rows_before: Object.keys(existing).length,
     soap_endpoint_reachable: null,
-    html_sources_used: []
+    html_sources_used: [],
+    pipeline_status: ''
   };
   const allNotices = [];
 
   // ===== Primary: ELWIS HTML (NfB + Schleusensperrungen) =====
-  // SOAP-POST is blocked at network level from Apps Script, so we use the
-  // public HTML pages — same data, different transport.
+  // ELWIS web pages are JavaScript-rendered SPAs — server returns the form
+  // shell, JS calls NTS-SOAP for actual content. UrlFetchApp cannot run JS,
+  // so static HTML scraping yields only form-default dates. We try anyway
+  // in case ELWIS adds a server-rendered fallback.
   var htmlSources = [
     { url: 'https://www.elwis.de/DE/dynamisch/Nfb/',                  source: 'NfB' },
     { url: 'https://www.elwis.de/DE/dynamisch/Schleusensperrungen/',  source: 'SCHLEUSE' }
@@ -69,7 +72,7 @@ function fetchAndStoreElwisNotices_() {
     }
   });
 
-  // ===== Secondary fallback: ELWIS NTS SOAP (only if HTML returned nothing) =====
+  // ===== Secondary: ELWIS NTS SOAP (POST blocked at WAF level for Apps Script IPs) =====
   if (allNotices.length === 0) {
     var messageTypes = ['FTM', 'WRM'];
     messageTypes.forEach(function(msgType) {
@@ -95,6 +98,15 @@ function fetchAndStoreElwisNotices_() {
   }
 
   if (stats.soap_endpoint_reachable === null) stats.soap_endpoint_reachable = false;
+
+  // Honest pipeline status — frontend should surface this rather than fake data
+  if (allNotices.length > 0) {
+    stats.pipeline_status = 'live_data_ok';
+  } else if (stats.html_sources_used.length === 0 && !stats.soap_endpoint_reachable) {
+    stats.pipeline_status = 'unreachable_from_apps_script_js_spa_blocks_scraping';
+  } else {
+    stats.pipeline_status = 'no_notices_in_period';
+  }
 
   // Robust demo-seed: greift bei leerem Sheet (kein notice_uid-Eintrag)
   // unabhängig davon, ob noch Reste aus einer alten Schemaversion in
