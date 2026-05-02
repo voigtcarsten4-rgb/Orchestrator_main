@@ -616,5 +616,188 @@ function runElwisHomepageScan() {
 }
 
 // ===========================================================================
+// END-TO-END DATA SOURCE AUDIT
+// ===========================================================================
+
+/**
+ * Pingt jede externe Datenquelle der Wave-Bite-Pipeline einzeln und
+ * berichtet HTTP-Status, Latenz, Bytes und – soweit möglich – ein
+ * geparstes Sample. Liest NICHTS in Sheets, schreibt NICHTS.
+ *
+ * Editor-Aufruf: runDataSourceAudit
+ *
+ * Kategorien:
+ *   A  PEGELONLINE WSV (Wasserstand)
+ *   B  Open-Meteo Forecast (Wind/Lufttemp)
+ *   C  Open-Meteo Marine (Wellen)
+ *   D  NOAA Tides + NDBC (USA – erwartet tot für Berlin)
+ *   E  ELWIS HTML (NfB, Schleusensperrungen, Verkehrsinfo)
+ *   F  Berlin LaGeSo CSV (Wassertemperatur Quelle)
+ *   G  Brandenburg XML (Wassertemperatur Quelle 2)
+ *   H  Geoportal Brandenburg (Fallback)
+ */
+function runDataSourceAudit() {
+  var report = [];
+  var BERLIN = { lat: 52.52, lon: 13.405 };
+
+  function probe(label, url, opts) {
+    var fopts = opts || { method: 'get', muteHttpExceptions: true, followRedirects: true };
+    try {
+      var t0 = Date.now();
+      var r = UrlFetchApp.fetch(url, fopts);
+      var ms = Date.now() - t0;
+      var code = r.getResponseCode();
+      var text = r.getContentText('UTF-8') || '';
+      return { ok: code === 200, code: code, ms: ms, bytes: text.length, text: text };
+    } catch (e) {
+      return { ok: false, error: ((e && e.message) || e) };
+    }
+  }
+
+  function line(label, res, extra) {
+    if (res.error) {
+      report.push(label + '  ERROR  ' + res.error);
+      return;
+    }
+    var s = label + '  HTTP ' + res.code + '  ' + res.ms + 'ms  bytes=' + res.bytes;
+    if (extra) s += '  ' + extra;
+    report.push(s);
+  }
+
+  // ---------- A: PEGELONLINE WSV ----------
+  report.push('=== A) PEGELONLINE WSV ===');
+  var pA = probe('A1 stations.json', 'https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations.json');
+  if (pA.ok) {
+    try {
+      var arr = JSON.parse(pA.text);
+      line('A1 stations.json', pA, 'count=' + arr.length + '  sample.shortname=' + (arr[0] && arr[0].shortname));
+    } catch (e) { line('A1 stations.json', pA, 'JSON-PARSE-ERROR'); }
+  } else { line('A1 stations.json', pA); }
+
+  // sample current measurement
+  var pegelSampleStation = '593647aa-9fea-4e13-bf0a-6c5180b80a73'; // BERLIN-MUEHLENDAMM (stable)
+  var pA2 = probe('A2 station current', 'https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/' + pegelSampleStation + '/W/currentmeasurement.json');
+  if (pA2.ok) {
+    try { var m = JSON.parse(pA2.text); line('A2 station current', pA2, 'value=' + m.value + '  unit=' + (m.stateMnwMhw || '?')); }
+    catch (e) { line('A2 station current', pA2, 'JSON-PARSE-ERROR'); }
+  } else { line('A2 station current', pA2); }
+
+  // ---------- B: Open-Meteo Forecast ----------
+  report.push('');
+  report.push('=== B) Open-Meteo Forecast ===');
+  var fcUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + BERLIN.lat +
+              '&longitude=' + BERLIN.lon +
+              '&current=temperature_2m,windspeed_10m,windgusts_10m,wind_direction_10m,visibility,precipitation,weather_code' +
+              '&timezone=UTC';
+  var pB = probe('B1 forecast', fcUrl);
+  if (pB.ok) {
+    try {
+      var f = JSON.parse(pB.text);
+      var c = f && f.current;
+      line('B1 forecast', pB,
+        'air=' + (c && c.temperature_2m) +
+        ' wind=' + (c && c.windspeed_10m) +
+        ' gust=' + (c && c.windgusts_10m) +
+        ' dir=' + (c && c.wind_direction_10m));
+    } catch (e) { line('B1 forecast', pB, 'JSON-PARSE-ERROR'); }
+  } else { line('B1 forecast', pB); }
+
+  // ---------- C: Open-Meteo Marine ----------
+  report.push('');
+  report.push('=== C) Open-Meteo Marine (Berlin = Binnengewässer) ===');
+  var marineUrl = 'https://marine-api.open-meteo.com/v1/marine?latitude=' + BERLIN.lat +
+                  '&longitude=' + BERLIN.lon +
+                  '&current=wave_height,ocean_current_velocity&timezone=UTC';
+  var pC = probe('C1 marine', marineUrl);
+  if (pC.ok) {
+    try {
+      var mr = JSON.parse(pC.text);
+      var mc = mr && mr.current;
+      line('C1 marine', pC,
+        'wave=' + (mc && mc.wave_height) +
+        ' ocean_current=' + (mc && mc.ocean_current_velocity) +
+        ' (null=keine_Marine_Daten_für_Binnengewässer)');
+    } catch (e) { line('C1 marine', pC, 'JSON-PARSE-ERROR  body200=' + pC.text.slice(0, 200)); }
+  } else { line('C1 marine', pC); }
+
+  // ---------- D: NOAA (USA) ----------
+  report.push('');
+  report.push('=== D) NOAA Tides + NDBC (USA-only) ===');
+  var pD1 = probe('D1 NOAA tides', 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=8454000&product=water_level&datum=MLLW&time_zone=gmt&units=metric&format=json');
+  line('D1 NOAA tides', pD1, pD1.ok ? 'sample=' + pD1.text.slice(0, 120).replace(/\s+/g, ' ') : '');
+  var pD2 = probe('D2 NOAA NDBC', 'https://www.ndbc.noaa.gov/data/realtime2/41001.txt');
+  line('D2 NOAA NDBC', pD2, pD2.ok ? 'first_line=' + pD2.text.split('\n')[0] : '');
+
+  // ---------- E: ELWIS HTML real URLs ----------
+  report.push('');
+  report.push('=== E) ELWIS HTML (echte URLs) ===');
+  var elwisUrls = [
+    { tag: 'E1 NfB-Modul',          url: 'https://www.elwis.de/DE/dynamisch/Nfb/' },
+    { tag: 'E2 Schleusensperrungen',url: 'https://www.elwis.de/DE/dynamisch/Schleusensperrungen/' },
+    { tag: 'E3 Verkehrsinfo',       url: 'https://www.elwis.de/DE/Binnenschifffahrt/Verkehrsinformationen/Verkehrsinformationen-node.html' },
+    { tag: 'E4 Fahrrinnen',         url: 'https://www.elwis.de/DE/Binnenschifffahrt/Fahrrinneneinschraenkungen/Fahrrinneneinschraenkungen-node.html' }
+  ];
+  elwisUrls.forEach(function(t) {
+    var p = probe(t.tag, t.url);
+    if (!p.ok) { line(t.tag, p); return; }
+    var html = p.text;
+    var liCount = (html.match(/<li[\s>]/gi) || []).length;
+    var trCount = (html.match(/<tr[\s>]/gi) || []).length;
+    var dateMatches = (html.match(/\d{2}\.\d{2}\.\d{4}/g) || []);
+    var classNotice = (html.match(/class\s*=\s*"[^"]*(meldung|nachricht|teaser|news|sperrung|info)[^"]*"/gi) || []).length;
+    line(t.tag, p,
+      'li=' + liCount +
+      ' tr=' + trCount +
+      ' dates=' + dateMatches.length +
+      ' notice_class=' + classNotice +
+      ' first_date=' + (dateMatches[0] || '-'));
+  });
+
+  // E5 NfB structure preview (raw)
+  var nfbProbe = probe('E5 NfB-preview', elwisUrls[0].url);
+  if (nfbProbe.ok) {
+    var stripped = nfbProbe.text.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
+    var slice = stripped.slice(0, 1800).replace(/\s+/g, ' ').trim();
+    report.push('E5 NfB body 1800 chars: ' + slice);
+  }
+
+  // ---------- F: Berlin LaGeSo ----------
+  report.push('');
+  report.push('=== F) Berlin LaGeSo CSV (water_temp source) ===');
+  var pF = probe('F1 letzte.csv', 'https://data.lageso.de/baden/0_letzte/letzte.csv');
+  if (pF.ok) {
+    var lines = pF.text.split(/\r?\n/);
+    var header = (lines[0] || '').slice(0, 250);
+    var hasTemp = /(?:^|;|,)\s*(water_temp|temperatur|wassertemperatur|temp)(?:\s*[;,]|\s*$)/i.test(header);
+    line('F1 letzte.csv', pF,
+      'rows=' + lines.length +
+      ' has_temp_col=' + hasTemp +
+      ' header=' + header);
+  } else { line('F1 letzte.csv', pF); }
+
+  // ---------- G: Brandenburg XML ----------
+  report.push('');
+  report.push('=== G) Brandenburg XML (water_temp source 2) ===');
+  var pG = probe('G1 badestellen.xml', 'https://badestellen.brandenburg.de/web/badestellen/badestellen/-/export/badestellen.xml');
+  if (pG.ok) {
+    var hasTempG = /<\s*(temperatur|wassertemperatur|water_temp|temp)\b/i.test(pG.text) ||
+                   /\b(temperatur|wassertemperatur|water_temp)\s*=/i.test(pG.text);
+    var sampleTags = (pG.text.match(/<[a-zA-Z][\w:-]*/g) || []).slice(0, 15).join(' ');
+    line('G1 badestellen.xml', pG,
+      'has_temp_marker=' + hasTempG +
+      ' first_tags=' + sampleTags);
+  } else { line('G1 badestellen.xml', pG); }
+
+  // ---------- H: Geoportal BB ----------
+  report.push('');
+  report.push('=== H) Geoportal Brandenburg ===');
+  var pH = probe('H1 geoportal', 'https://geoportal.brandenburg.de/gs-json/xml?fileid=9DD12A01-EB80-4166-A0D2-71239328DB57');
+  line('H1 geoportal', pH, pH.ok ? 'sample=' + pH.text.slice(0, 120).replace(/\s+/g, ' ') : '');
+
+  Logger.log('[AUDIT]\n' + report.join('\n'));
+  return report;
+}
+
+// ===========================================================================
 // END ELWIS PIPELINE
 // ===========================================================================
