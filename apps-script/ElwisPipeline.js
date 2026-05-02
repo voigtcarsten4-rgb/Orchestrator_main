@@ -278,43 +278,118 @@ function extractElwisItemsFromHtml_(html, baseUrl) {
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<!--[\s\S]*?-->/g, ' ');
 
-  var dateRe = /\b(\d{2})\.(\d{2})\.(\d{4})\b/;
+  // Datum-zentrische Extraktion: finde jedes dd.MM.yyyy und schneide
+  // den umschließenden Block aus (tr|li|dt|dd|article|section|div|p|h*).
+  // Dadurch unabhängig von der konkreten Markup-Wahl der ELWIS-Seite.
   var items = [];
   var seen = {};
+  var dateRe = /\b(\d{2})\.(\d{2})\.(\d{4})\b/g;
+  var match;
+  while ((match = dateRe.exec(clean)) !== null) {
+    var pos = match.index;
+    var ds  = match[0];
+    var blockStart = findElwisBlockStart_(clean, pos);
+    var blockEnd   = findElwisBlockEnd_(clean, pos);
+    if (blockEnd <= blockStart) continue;
+    var block = clean.slice(blockStart, blockEnd);
+    var text = block.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    if (text.length < 12) continue;
+    if (/^(home|impressum|sitemap|datenschutz|kontakt|navigation)\b/i.test(text)) continue;
 
-  function pushIfDated(blockHtml) {
-    if (!blockHtml) return;
-    var text = blockHtml.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-    if (text.length < 12) return;
-    var m = text.match(dateRe);
-    if (!m) return;
-    if (/^(home|impressum|sitemap|datenschutz|kontakt)\b/i.test(text)) return;
-    var hrefMatch = blockHtml.match(/href\s*=\s*["']([^"'#]+)["']/i);
+    // Strip the leading date(s) from the title for cleaner display
+    var title = text.replace(new RegExp('^(' + ds.replace(/\./g, '\\.') + '\\s*[-–:]?\\s*)+', ''), '').slice(0, 200).trim();
+    if (!title) title = text.slice(0, 200);
+
+    var hrefMatch = block.match(/href\s*=\s*["']([^"'#]+)["']/i);
     var link = hrefMatch ? absoluteUrl_(hrefMatch[1], baseUrl) : '';
-    var key = m[0] + '|' + text.slice(0, 80);
-    if (seen[key]) return;
+
+    var key = ds + '|' + title.slice(0, 80);
+    if (seen[key]) continue;
     seen[key] = true;
+
     items.push({
-      datestr: m[0],
+      datestr: ds,
       text: text,
-      title: text.length > 200 ? text.slice(0, 200) : text,
+      title: title,
       url: link
     });
   }
-
-  var trRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
-  var tr;
-  while ((tr = trRe.exec(clean)) !== null) {
-    pushIfDated(tr[1]);
-  }
-  if (items.length === 0) {
-    var liRe = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
-    var li;
-    while ((li = liRe.exec(clean)) !== null) {
-      pushIfDated(li[1]);
-    }
-  }
   return items;
+}
+
+/**
+ * Geht von pos rückwärts und findet den nächsten öffnenden Block-Tag.
+ * Berücksichtigt: tr li dt dd article section div p h1-6.
+ * Liefert die Position direkt nach dem Tag, sodass slice(start, end) den
+ * Inhalt ohne Außenwand liefert.
+ */
+function findElwisBlockStart_(html, pos) {
+  var window = html.slice(Math.max(0, pos - 1500), pos);
+  var openRe = /<(tr|li|dt|dd|article|section|div|p|h[1-6])\b[^>]*>/gi;
+  var lastEnd = 0;
+  var m;
+  while ((m = openRe.exec(window)) !== null) {
+    lastEnd = m.index + m[0].length;
+  }
+  return Math.max(0, pos - 1500) + lastEnd;
+}
+
+function findElwisBlockEnd_(html, pos) {
+  var maxLook = Math.min(html.length, pos + 1500);
+  var window = html.slice(pos, maxLook);
+  var closeRe = /<\/(tr|li|dt|dd|article|section|div|p|h[1-6])>/i;
+  var m = window.match(closeRe);
+  if (m) return pos + m.index;
+  return Math.min(html.length, pos + 400);
+}
+
+/**
+ * Editor-Hilfe: zeigt für NfB + Schleusensperrungen die ECHTEN
+ * 250-Zeichen-Kontexte rund um jedes gefundene Datum. Damit lässt sich
+ * sehen, in welchem Markup-Block die Notices stecken — falls der Extractor
+ * weiterhin 0 Items liefert.
+ */
+function runElwisHtmlPreview() {
+  var report = [];
+  var urls = [
+    'https://www.elwis.de/DE/dynamisch/Nfb/',
+    'https://www.elwis.de/DE/dynamisch/Schleusensperrungen/',
+    'https://www.elwis.de/DE/Binnenschifffahrt/Verkehrsinformationen/Verkehrsinformationen-node.html',
+    'https://www.elwis.de/DE/Binnenschifffahrt/Fahrrinneneinschraenkungen/Fahrrinneneinschraenkungen-node.html'
+  ];
+  urls.forEach(function(url) {
+    report.push('=== ' + url + ' ===');
+    try {
+      var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
+      if (resp.getResponseCode() !== 200) {
+        report.push('  HTTP ' + resp.getResponseCode());
+        return;
+      }
+      var html = resp.getContentText('UTF-8') || '';
+      var clean = html.replace(/<script[\s\S]*?<\/script>/gi, ' ')
+                       .replace(/<style[\s\S]*?<\/style>/gi, ' ');
+      var dateRe = /\b\d{2}\.\d{2}\.\d{4}\b/g;
+      var positions = [];
+      var m;
+      while ((m = dateRe.exec(clean)) !== null) positions.push({ pos: m.index, date: m[0] });
+      report.push('  total dates found: ' + positions.length);
+      positions.slice(0, 6).forEach(function(p, i) {
+        var ctx = clean.slice(Math.max(0, p.pos - 120), Math.min(clean.length, p.pos + 220));
+        ctx = ctx.replace(/\s+/g, ' ').slice(0, 320);
+        report.push('  [' + (i + 1) + '] ' + p.date + ' ctx: ' + ctx);
+      });
+      // Also: show what extractElwisItemsFromHtml_ does
+      var items = extractElwisItemsFromHtml_(html, url);
+      report.push('  items via extractor: ' + items.length);
+      items.slice(0, 3).forEach(function(it, i) {
+        report.push('  ITEM[' + i + '] ' + it.datestr + ' | ' + it.title.slice(0, 140));
+      });
+    } catch (e) {
+      report.push('  ERROR ' + ((e && e.message) || e));
+    }
+  });
+  Logger.log('[ELWIS-HTML-PREVIEW]\n' + report.join('\n'));
+  return report;
 }
 
 function absoluteUrl_(href, baseUrl) {
