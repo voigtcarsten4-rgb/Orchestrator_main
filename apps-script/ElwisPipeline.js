@@ -94,22 +94,120 @@ function fetchAndStoreElwisNotices_() {
 /**
  * Diagnose-Helper: testet die ELWIS-Endpoint-Erreichbarkeit isoliert.
  * Editor-Aufruf: gibt HTTP-Status / Fehlertext zurück, ohne Sheets anzufassen.
+ *
+ * Testet:
+ *  - GET-Erreichbarkeit verschiedener ELWIS-URLs
+ *  - SOAP-POST mit dem real verwendeten Body in 4 Header-Varianten
+ *  - alternative Quellen (HTML-Seiten, mögliche RSS/JSON-Feeds)
+ *
+ * Ziel: zeigen, welche URL/Methode aus Apps Script heraus ECHTE Daten liefert.
  */
 function runElwisDiagnose() {
-  var endpoints = [
+  var report = [];
+
+  // ---------- GET probes ----------
+  var getTargets = [
     'https://nts40.elwis.de/server/web/MessageServer.php?wsdl',
     'https://nts40.elwis.de/server/web/MessageServer.php',
-    'https://www.elwis.de/'
+    'https://www.elwis.de/',
+    'https://www.elwis.de/DE/Service/Schifffahrtspolizeiliche-Verfuegungen/Schifffahrtspolizeiliche-Verfuegungen-node.html',
+    'https://www.elwis.de/DE/Schifffahrtsinformationen/Bekanntmachungen-fuer-die-Binnenschifffahrt/Aktuelle-Meldungen/Aktuelle-Meldungen-node.html',
+    'https://www.elwis.de/DE/Service/RSS/RSS-node.html',
+    'https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations.json?ids=BERLIN'
   ];
-  var report = [];
-  endpoints.forEach(function(url) {
+  report.push('--- GET PROBES ---');
+  getTargets.forEach(function(url) {
     try {
-      var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
-      report.push(url + ' → HTTP ' + resp.getResponseCode());
+      var t0 = Date.now();
+      var resp = UrlFetchApp.fetch(url, {
+        method: 'get',
+        muteHttpExceptions: true,
+        followRedirects: true
+      });
+      var ms = Date.now() - t0;
+      var len = (resp.getContentText('UTF-8') || '').length;
+      report.push('GET ' + ms + 'ms  HTTP ' + resp.getResponseCode() + '  ' + len + ' bytes  ' + url);
     } catch (e) {
-      report.push(url + ' → ERROR: ' + ((e && e.message) || e));
+      report.push('GET ERROR  ' + ((e && e.message) || e) + '  ' + url);
     }
   });
+
+  // ---------- POST SOAP variants ----------
+  report.push('');
+  report.push('--- SOAP POST VARIANTS ---');
+  var soapEndpoint = 'https://nts40.elwis.de/server/web/MessageServer.php';
+  var ns = 'http://www.ris.eu/nts.ms/2.0.4.0';
+  var soapAction = 'http://www.ris.eu/nts.ms/get_messages';
+  var now = new Date();
+  var from = new Date(now.getTime() - 14 * 24 * 3600 * 1000);
+  var fmt = function(d) { return Utilities.formatDate(d, 'UTC', 'yyyy-MM-dd') + 'T00:00:00Z'; };
+  var body = '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:NS1="' + ns + '">' +
+    '<SOAP-ENV:Body><NS1:get_messages>' +
+    '<NS1:message_type>FTM</NS1:message_type>' +
+    '<NS1:date_from>' + fmt(from) + '</NS1:date_from>' +
+    '<NS1:date_to>'   + fmt(now)  + '</NS1:date_to>' +
+    '<NS1:limit>1</NS1:limit>' +
+    '</NS1:get_messages></SOAP-ENV:Body></SOAP-ENV:Envelope>';
+
+  var variants = [
+    { label: 'A:standard (text/xml + SOAPAction quoted)',
+      opts: { method: 'post', contentType: 'text/xml; charset=UTF-8',
+              headers: { 'SOAPAction': '"' + soapAction + '"' },
+              payload: body, muteHttpExceptions: true } },
+    { label: 'B:application/soap+xml + SOAPAction unquoted',
+      opts: { method: 'post', contentType: 'application/soap+xml; charset=UTF-8',
+              headers: { 'SOAPAction': soapAction },
+              payload: body, muteHttpExceptions: true } },
+    { label: 'C:Mozilla User-Agent override',
+      opts: { method: 'post', contentType: 'text/xml; charset=UTF-8',
+              headers: { 'SOAPAction': '"' + soapAction + '"',
+                         'User-Agent': 'Mozilla/5.0 (compatible; WaveBite/1.0)' },
+              payload: body, muteHttpExceptions: true } },
+    { label: 'D:no SOAPAction header',
+      opts: { method: 'post', contentType: 'text/xml; charset=UTF-8',
+              payload: body, muteHttpExceptions: true } }
+  ];
+
+  variants.forEach(function(v) {
+    try {
+      var t0 = Date.now();
+      var resp = UrlFetchApp.fetch(soapEndpoint, v.opts);
+      var ms = Date.now() - t0;
+      var code = resp.getResponseCode();
+      var text = resp.getContentText('UTF-8') || '';
+      var hasMessages = text.indexOf('result_message') >= 0 || text.indexOf('get_messagesResponse') >= 0;
+      var faultIdx = text.toLowerCase().indexOf('fault');
+      var snippet  = text.slice(0, 240).replace(/\s+/g, ' ');
+      report.push('POST ' + v.label + '  ' + ms + 'ms  HTTP ' + code +
+                  '  bytes=' + text.length +
+                  '  msgs=' + hasMessages +
+                  '  fault@' + faultIdx +
+                  '  snippet=' + snippet);
+    } catch (e) {
+      report.push('POST ' + v.label + '  ERROR ' + ((e && e.message) || e));
+    }
+  });
+
+  // ---------- HTML title sniff (kann Quelle für scrape sein) ----------
+  report.push('');
+  report.push('--- HTML PROBE elwis.de Bekanntmachungen ---');
+  try {
+    var bUrl = 'https://www.elwis.de/DE/Schifffahrtsinformationen/Bekanntmachungen-fuer-die-Binnenschifffahrt/Aktuelle-Meldungen/Aktuelle-Meldungen-node.html';
+    var bResp = UrlFetchApp.fetch(bUrl, { muteHttpExceptions: true, followRedirects: true });
+    var html = bResp.getContentText('UTF-8') || '';
+    var titleMatch = html.match(/<title>([\s\S]*?)<\/title>/i);
+    var listItems = (html.match(/<li[\s>]/g) || []).length;
+    var newsItems = (html.match(/(class\s*=\s*"[^"]*(?:news|teaser|bekanntm|meldung)[^"]*")/gi) || []).length;
+    report.push('HTML  HTTP ' + bResp.getResponseCode() +
+                '  bytes=' + html.length +
+                '  <li>=' + listItems +
+                '  newsClass=' + newsItems +
+                '  title="' + (titleMatch ? titleMatch[1].slice(0, 120) : '?') + '"');
+  } catch (e) {
+    report.push('HTML  ERROR ' + ((e && e.message) || e));
+  }
+
   Logger.log('[ELWIS-DIAG]\n' + report.join('\n'));
   return report;
 }
