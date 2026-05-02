@@ -79,6 +79,71 @@ human_triggers:
     input_required: service_name_and_use_case
     enabled: true
 
+  strategy_view_requested:
+    id: T-01-10
+    description: "Human requests a strategy briefing, OKR draft, decision memo, or foresight scan"
+    activates: A-16
+    input_required: horizon_and_scope
+    enabled: true
+
+  sales_task_requested:
+    id: T-01-11
+    description: "Human requests lead scoring, pipeline hygiene, follow-up draft, or account briefing"
+    activates: A-17
+    input_required: task_type_and_scope
+    enabled: true
+
+  finance_view_requested:
+    id: T-01-12
+    description: "Human requests a finance summary, reconciliation, dispute log, or refund proposal"
+    activates: A-18
+    input_required: task_type_and_period
+    enabled: true
+
+  marketing_task_requested:
+    id: T-01-13
+    description: "Human requests rankings, content gaps, mentions digest, link analytics, or content brief"
+    activates: A-19
+    input_required: task_type_and_scope
+    enabled: true
+
+  design_task_requested:
+    id: T-01-14
+    description: "Human requests a brand audit, asset render, drift report, or design brief"
+    activates: A-20
+    input_required: task_type_and_assets
+    enabled: true
+
+  legal_task_requested:
+    id: T-01-15
+    description: "Human requests a contract draft, clause comparison, signature status, or inbound memo"
+    activates: A-21
+    input_required: task_type_and_documents
+    requires_approval: true
+    enabled: true
+
+  research_task_requested:
+    id: T-01-16
+    description: "Human requests deep research, competitor profile, signal scan, or evidence collection"
+    activates: A-22
+    input_required: topic_scope_horizon_quality_bar
+    enabled: true
+
+  social_task_requested:
+    id: T-01-17
+    description: "Human requests social-media calendar, atomization, engagement queue, analytics, or trends"
+    activates: A-23
+    input_required: task_type_and_scope
+    enabled: true
+
+  personal_task_requested:
+    id: T-01-18
+    description: "Human requests a personal day plan, travel itinerary, household list, admin reminders, or learning digest"
+    activates: A-24
+    input_required: task_type_and_scope
+    enabled: true
+    privacy_note: "Output stays under /data/drafts/personal/; never mixes with business data"
+
 # ─── T-02: Event-Driven Triggers ───────────────────────────────────────────
 
 event_triggers:
@@ -156,6 +221,78 @@ schedule_triggers:
     enabled: false
     note: "Requires email integration to be approved and activated first"
 
+  weekly_strategy_briefing:
+    id: T-03-06
+    description: "Strategy briefing for the upcoming week"
+    activates: A-16
+    schedule: "every Monday at 08:00 local time"
+    enabled: false
+
+  quarterly_okr_draft:
+    id: T-03-07
+    description: "Draft OKRs for the upcoming quarter"
+    activates: A-16
+    schedule: "first working day of each quarter"
+    enabled: false
+
+  weekly_pipeline_hygiene:
+    id: T-03-08
+    description: "Run sales pipeline hygiene scan"
+    activates: A-17
+    schedule: "every Monday at 09:30 local time"
+    enabled: false
+
+  daily_finance_summary:
+    id: T-03-09
+    description: "Reconcile yesterday's billing events and surface anomalies"
+    activates: A-18
+    schedule: "weekdays at 08:00 local time"
+    enabled: false
+    note: "Requires Stripe MCP to be approved and activated first"
+
+  weekly_marketing_rankings:
+    id: T-03-10
+    description: "Generate weekly ranking and content-gap reports"
+    activates: A-19
+    schedule: "every Monday at 10:00 local time"
+    enabled: false
+
+  monthly_brand_audit:
+    id: T-03-11
+    description: "Run brand-drift audit across active assets"
+    activates: A-20
+    schedule: "first Monday of each month"
+    enabled: false
+
+  weekly_signature_status:
+    id: T-03-12
+    description: "Report contracts in signature flow with stalls"
+    activates: A-21
+    schedule: "every Wednesday at 11:00 local time"
+    enabled: false
+
+  weekly_signal_scan:
+    id: T-03-13
+    description: "Run market and technology signal scan"
+    activates: A-22
+    schedule: "every Friday at 14:00 local time"
+    enabled: false
+
+  weekly_social_calendar:
+    id: T-03-14
+    description: "Plan next week's social-media content calendar"
+    activates: A-23
+    schedule: "every Thursday at 15:00 local time"
+    enabled: false
+
+  daily_personal_plan:
+    id: T-03-15
+    description: "Compile personal day plan with read-only business calendar handshake"
+    activates: A-24
+    schedule: "daily at 06:30 local time"
+    enabled: false
+    privacy_note: "Personal-only output under /data/drafts/personal/"
+
 # ─── T-04: Chained Workflow Triggers ───────────────────────────────────────
 # These activate automatically when a predecessor workflow is approved.
 # The approval gate must be passed first — these never auto-activate without approval.
@@ -191,3 +328,53 @@ chained_triggers:
     activates: A-10
     when: "A-09 produces scheduling handoff file"
     enabled: true
+
+  a22_to_a16:
+    id: T-04-06
+    description: "Research evidence ready — strategy agent can build decision memo"
+    activates: A-16
+    when: "A-22 produces evidence file referenced by an open A-16 task"
+    enabled: true
+
+  a22_to_a17:
+    id: T-04-07
+    description: "Account research ready — sales agent can compose briefing"
+    activates: A-17
+    when: "A-22 produces account profile referenced by an open A-17 task"
+    enabled: true
+
+  a19_to_a08:
+    id: T-04-08
+    description: "Marketing brief ready — content agent can produce draft"
+    activates: A-08
+    when: "A-19 produces a content brief in /data/drafts/marketing/briefs/"
+    enabled: true
+
+  a08_to_a23:
+    id: T-04-09
+    description: "Long-form content ready — social agent can atomize"
+    activates: A-23
+    when: "A-08 produces approved long-form content"
+    enabled: true
+
+  a17_to_a21:
+    id: T-04-10
+    description: "Sales hand-off requesting a contract draft"
+    activates: A-21
+    when: "A-17 emits a contract-request handoff with commercial terms"
+    enabled: true
+
+  a18_to_a13:
+    id: T-04-11
+    description: "Daily finance summary feeds operations summary"
+    activates: A-13
+    when: "A-18 produces a daily finance summary"
+    enabled: true
+
+  a16_chained_inputs:
+    id: T-04-12
+    description: "Strategy agent reconsiders when any of its source agents publishes a material report"
+    activates: A-16
+    when: "A-13, A-17, A-18, A-19, or A-22 emits a flagged-material report"
+    enabled: false
+    note: "Disabled by default — turning on means strategy briefs may regenerate frequently"
