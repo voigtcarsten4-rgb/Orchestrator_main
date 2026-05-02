@@ -23,6 +23,15 @@
 | A-13 | Business Operations Summary Agent | Managerial reporting | [business-operations-agent.md](../../automation/agents/business-operations-agent.md) |
 | A-14 | Desktop and File Hygiene Agent | Local file classification plan | [desktop-file-hygiene-agent.md](../../automation/agents/desktop-file-hygiene-agent.md) |
 | A-15 | Integration Planning Agent | Future integration definitions | [integration-planning-agent.md](../../automation/agents/integration-planning-agent.md) |
+| A-16 | CEO and Strategy Agent | Top-level strategy, OKRs, foresight | [ceo-strategy-agent.md](../../automation/agents/ceo-strategy-agent.md) |
+| A-17 | Sales and CRM Agent | Lead scoring, pipeline hygiene, follow-up drafts | [sales-crm-agent.md](../../automation/agents/sales-crm-agent.md) |
+| A-18 | Finance Agent | Billing monitoring, reconciliation, refund proposals | [finance-agent.md](../../automation/agents/finance-agent.md) |
+| A-19 | Marketing and SEO Agent | Rankings, content gaps, mentions, link analytics | [marketing-seo-agent.md](../../automation/agents/marketing-seo-agent.md) |
+| A-20 | Design and Brand Agent | Brand consistency, asset rendering, audits | [design-brand-agent.md](../../automation/agents/design-brand-agent.md) |
+| A-21 | Legal and Contract Agent | Contract drafts, clause comparison, signature tracking | [legal-contract-agent.md](../../automation/agents/legal-contract-agent.md) |
+| A-22 | Research and Intelligence Agent | Cited research, competitor profiles, signal scans | [research-intelligence-agent.md](../../automation/agents/research-intelligence-agent.md) |
+| A-23 | Social Media Agent | Multi-platform calendar, atomization, engagement drafts | [social-media-agent.md](../../automation/agents/social-media-agent.md) |
+| A-24 | Personal Life and Household Agent | Private life: day plan, travel, household, admin, learning | [personal-life-agent.md](../../automation/agents/personal-life-agent.md) |
 
 ---
 
@@ -56,6 +65,15 @@
 | A-13 | Defined | Runs on request or schedule |
 | A-14 | Defined | Planning only — no destructive actions |
 | A-15 | Defined | Documentation only until integrations approved |
+| A-16 | Defined | Strategic drafts only; never executes |
+| A-17 | Defined | All outbound is draft; no CRM writes without approval |
+| A-18 | Defined | Draft-only; no money moves without per-item approval |
+| A-19 | Defined | Drafts and briefs; no live publishing |
+| A-20 | Defined | Renders are drafts; no live asset replacement |
+| A-21 | Defined | High-risk; never sends, never signs |
+| A-22 | Defined | Source-cited drafts; no claim without evidence |
+| A-23 | Defined | Multi-platform drafts; never publishes |
+| A-24 | Defined | Strict privacy boundary; personal data never crosses to business |
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## Mapping of every Agent to relevant Extensions
 
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Reference only — listing does not activate any connector
 **Owner:** Integration Planning Agent (A-15)
 **Last Reviewed:** 2026-05-02
@@ -166,6 +166,87 @@ It also proposes **new agents** to fill currently-uncovered business domains
 | Connector ideas | OpenAPI catalogs, vendor security questionnaires |
 | Why | Curates integration registry; lives where the connectors live |
 
+### A-16 — CEO and Strategy Agent
+
+| Layer | Extensions |
+|---|---|
+| MCP | GitHub, Slack, ClickUp, HubSpot, Stripe, Calendly |
+| Repos | LangGraph (R-09), Inspect AI (R-47), Anthropic Cookbook (R-12) |
+| Connector ideas | Notion / Coda for executive dashboards, Linear for cross-team backlog |
+| Why | Owns strategy artifacts; reads from every domain agent |
+
+### A-17 — Sales and CRM Agent
+
+| Layer | Extensions |
+|---|---|
+| MCP | HubSpot (primary), Apollo, Gmail, Calendly, Bitly |
+| Repos | smolagents (R-35), Pydantic AI (R-34) |
+| Connector ideas | LinkedIn Sales Navigator (when access granted), Clearbit |
+| Why | Pipeline + outbound + research in one agent |
+
+### A-18 — Finance Agent
+
+| Layer | Extensions |
+|---|---|
+| MCP | Stripe (primary) |
+| Repos | Pydantic AI (R-34), Langfuse (R-29) |
+| Connector ideas | QuickBooks/Xero, BigQuery for warehoused finance data |
+| Why | Finance event monitoring; high-risk so draft-only by default |
+
+### A-19 — Marketing and SEO Agent
+
+| Layer | Extensions |
+|---|---|
+| MCP | Ahrefs (primary), Bitly, Webflow, HubSpot |
+| Repos | Firecrawl (R-39), Crawl4AI (R-41) |
+| Connector ideas | Google Search Console direct, Plausible/PostHog for product analytics |
+| Why | Demand and visibility; feeds A-08 and A-23 |
+
+### A-20 — Design and Brand Agent
+
+| Layer | Extensions |
+|---|---|
+| MCP | Adobe (primary), Cloudinary, Webflow |
+| Repos | E2B (R-38) |
+| Connector ideas | Figma API (when available), Frontify/Bynder for brand DAM |
+| Why | Brand consistency and asset rendering |
+
+### A-21 — Legal and Contract Agent
+
+| Layer | Extensions |
+|---|---|
+| MCP | DocuSeal / Sign MCP, Google Drive |
+| Repos | Pydantic AI (R-34) for typed clause schemas |
+| Connector ideas | Contract lifecycle management (CLM) systems, jurisdiction-aware clause libraries |
+| Why | Template-based drafting; never sends, never signs |
+
+### A-22 — Research and Intelligence Agent
+
+| Layer | Extensions |
+|---|---|
+| MCP | Exa Search (primary), Hugging Face, Ahrefs |
+| Repos | Crawl4AI (R-41), LlamaIndex (R-24), Cognee (R-05) |
+| Connector ideas | Semantic Scholar, Google Scholar (where allowed), Crunchbase |
+| Why | Source-cited research feeds strategy, sales, marketing, social |
+
+### A-23 — Social Media Agent
+
+| Layer | Extensions |
+|---|---|
+| MCP | Bitly (trackable links), Slack (internal coordination), Apollo (creator research) |
+| Repos | DSPy (R-21), Firecrawl (R-39) |
+| Connector ideas | Buffer/Hootsuite/Publer for scheduling (when activated), LinkedIn / X / IG / TikTok APIs |
+| Why | Broader social mix beyond A-12 LinkedIn focus |
+
+### A-24 — Personal Life and Household Agent
+
+| Layer | Extensions |
+|---|---|
+| MCP | Calendar MCP (read-only), Google Drive MCP (personal folder only) |
+| Repos | Pydantic AI (R-34) |
+| Connector ideas | Todoist / Things / Reminders, Apple Health export, Notion personal workspace |
+| Why | Private-life organization with strict data boundary against business |
+
 ---
 
 ## 3. Cross-Cutting Extensions (apply to all agents)
@@ -180,61 +261,71 @@ It also proposes **new agents** to fill currently-uncovered business domains
 
 ---
 
-## 4. Proposed New Agents (currently missing)
+## 4. New Agents (now defined: A-16 through A-24)
 
-These domains have strong MCP coverage in this session but no dedicated
-agent yet. Each proposal includes the suggested extensions so it can be
-spun up quickly.
+The following agents are now defined under `automation/agents/` with prompt
+files under `automation/prompts/agents/`. Each entry restates its primary
+extensions for quick reference.
 
-### A-16 — CEO / Strategy Agent (proposed)
+### A-16 — CEO and Strategy Agent
 
-- **Scope:** Quarterly themes, OKR drafting, executive narrative; reads from A-13 Business Ops Summary.
-- **Distinction from A-01:** A-01 is the *coordinator* of agents; A-16 is the *content owner* of strategy artifacts.
-- **MCP:** GitHub, Slack, ClickUp, HubSpot, Stripe (revenue context), Calendly (executive time)
-- **Repos:** LangGraph (R-09), Inspect AI (R-47) for strategy-quality evals
-- **Status:** Proposal — not defined
+- **Scope:** Quarterly themes, OKR drafting, decision memos, foresight scans
+- **Distinction from A-01:** A-01 *coordinates* agents; A-16 *owns* strategy artifacts
+- **MCP:** GitHub, Slack, ClickUp, HubSpot, Stripe, Calendly
+- **Repos:** LangGraph (R-09), Inspect AI (R-47), Anthropic Cookbook (R-12)
 
-### A-17 — Sales / CRM Agent (proposed)
+### A-17 — Sales and CRM Agent
 
-- **Scope:** Lead scoring, pipeline hygiene, follow-up drafting, account research.
-- **MCP:** HubSpot (primary), Apollo (enrichment), Gmail (drafts), Calendly (booking links), Bitly (trackable outreach links)
-- **Repos:** smolagents (R-35) for narrow scoring agents
-- **Status:** Proposal
+- **Scope:** Lead scoring, pipeline hygiene, follow-up drafts, account briefings
+- **MCP:** HubSpot (primary), Apollo (enrichment), Gmail, Calendly, Bitly
+- **Repos:** smolagents (R-35), Pydantic AI (R-34)
 
-### A-18 — Finance Agent (proposed)
+### A-18 — Finance Agent
 
-- **Scope:** Invoice reconciliation, dispute monitoring, subscription lifecycle, refund drafting (draft only).
+- **Scope:** Reconciliation, dispute monitoring, refund proposals, anomaly reporting
 - **MCP:** Stripe (primary)
-- **Repos:** Pydantic AI (R-34) for typed financial records
-- **Status:** Proposal — high-risk, draft-only by default
+- **Repos:** Pydantic AI (R-34) for typed records, Langfuse (R-29) for cost telemetry
+- **Risk note:** Draft-only by default; per-item human approval for any money movement
 
-### A-19 — Marketing / SEO Agent (proposed)
+### A-19 — Marketing and SEO Agent
 
-- **Scope:** Keyword tracking, content gap detection, brand-radar monitoring, link analytics.
+- **Scope:** Rankings, content gaps, mentions, link analytics, content briefs
 - **MCP:** Ahrefs (primary), Bitly, Webflow, HubSpot
-- **Repos:** Firecrawl (R-39) for competitor capture
-- **Status:** Proposal
+- **Repos:** Firecrawl (R-39), Crawl4AI (R-41)
 
-### A-20 — Design and Brand Agent (proposed)
+### A-20 — Design and Brand Agent
 
-- **Scope:** Brand consistency, asset templating, image briefs to renders.
+- **Scope:** Asset audits, brand-rule enforcement, template renders, drift reports
 - **MCP:** Adobe (primary), Cloudinary, Webflow
-- **Repos:** E2B (R-38)
-- **Status:** Proposal
+- **Repos:** E2B (R-38) for sandboxed tool runs
 
-### A-21 — Legal / Contract Agent (proposed)
+### A-21 — Legal and Contract Agent
 
-- **Scope:** Contract preparation from templates, signature flows, status tracking. **Always draft-only.**
-- **MCP:** DocuSeal/Sign MCP (primary), Google Drive (storage)
+- **Scope:** Template-based contract drafts, clause comparison, signature tracking
+- **MCP:** DocuSeal / Sign MCP (primary), Google Drive (storage)
 - **Repos:** Pydantic AI (R-34) for typed clause schemas
-- **Status:** Proposal — high-risk, every send requires approval
+- **Risk note:** Never sends, never signs; every send requires explicit human approval
 
-### A-22 — Research / Intelligence Agent (proposed)
+### A-22 — Research and Intelligence Agent
 
-- **Scope:** Deep research, competitor scans, paper/model discovery, evidence collection.
-- **MCP:** Exa Search (primary), Hugging Face (models/datasets/papers), Ahrefs (domain authority context)
+- **Scope:** Cited research, competitor profiles, signal scans, evidence collection
+- **MCP:** Exa Search (primary), Hugging Face (models/datasets/papers), Ahrefs
 - **Repos:** Crawl4AI (R-41), LlamaIndex (R-24), Cognee (R-05)
-- **Status:** Proposal
+
+### A-23 — Social Media Agent
+
+- **Scope:** Multi-platform content calendar (LinkedIn, X, IG, TikTok, YouTube, Threads, Bluesky), atomization, engagement drafts, trend digests, channel analytics
+- **Distinction from A-12:** A-12 owns long-form LinkedIn / professional outreach; A-23 owns the broader social mix and cadence
+- **MCP:** Bitly (trackable links), Slack (internal coordination), Apollo (creator research where applicable)
+- **Repos:** DSPy (R-21) for tone optimization, Firecrawl (R-39) for trend capture
+
+### A-24 — Personal Life and Household Agent
+
+- **Scope:** Day plans (with read-only business calendar handshake), travel itineraries, household lists, personal admin reminders, learning queue
+- **Privacy boundary:** Personal data lives only under `/data/*/personal/`; never appears in business reports
+- **MCP:** Calendar MCP (read-only), Google Drive MCP (personal folder only)
+- **Repos:** Pydantic AI (R-34) for typed task records
+- **Risk note:** Never books, sends, pays, or contacts anyone autonomously
 
 ---
 
