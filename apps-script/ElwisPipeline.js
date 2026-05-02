@@ -45,13 +45,39 @@ function fetchAndStoreElwisNotices_() {
     fetched: 0, parsed: 0, written: 0, updated: 0,
     skipped: 0, errors: [],
     sheet_rows_before: Object.keys(existing).length,
+    proxy_used: false,
     soap_endpoint_reachable: null,
     html_sources_used: [],
     pipeline_status: ''
   };
   const allNotices = [];
 
-  // ===== Primary: ELWIS HTML (NfB + Schleusensperrungen) =====
+  // ===== Primary: Cloudflare Worker proxy (bypasses ELWIS POST block) =====
+  // Configured via Script Properties:
+  //   ELWIS_PROXY_URL      e.g. https://wave-bite-elwis-proxy.xxx.workers.dev
+  //   ELWIS_PROXY_API_KEY  optional, matches wrangler secret PROXY_API_KEY
+  var proxyResult = fetchElwisViaProxy_(['FTM', 'WRM'], 14);
+  if (proxyResult && proxyResult.ok) {
+    stats.proxy_used = true;
+    proxyResult.messages.forEach(function(m) {
+      var rawRow = [
+        m.source, m.notice_id || '', m.title || '', m.source,
+        m.area || '', m.waterway || '',
+        m.valid_from || '', m.valid_to || '', m.published_at || '',
+        '', m.raw_text || ''
+      ];
+      var norm = normalizeElwisNotice_(rawRow, m.source);
+      if (!norm) { stats.skipped++; return; }
+      matchElwisToWatersConservative_(norm, watersIndex);
+      allNotices.push(norm);
+      stats.parsed++;
+    });
+    stats.fetched += proxyResult.messages.length;
+  } else if (proxyResult && proxyResult.configured) {
+    stats.errors.push('PROXY: ' + (proxyResult.error || 'unknown'));
+  }
+
+  // ===== Secondary: ELWIS HTML (NfB + Schleusensperrungen) =====
   // ELWIS web pages are JavaScript-rendered SPAs — server returns the form
   // shell, JS calls NTS-SOAP for actual content. UrlFetchApp cannot run JS,
   // so static HTML scraping yields only form-default dates. We try anyway
@@ -101,9 +127,9 @@ function fetchAndStoreElwisNotices_() {
 
   // Honest pipeline status — frontend should surface this rather than fake data
   if (allNotices.length > 0) {
-    stats.pipeline_status = 'live_data_ok';
-  } else if (stats.html_sources_used.length === 0 && !stats.soap_endpoint_reachable) {
-    stats.pipeline_status = 'unreachable_from_apps_script_js_spa_blocks_scraping';
+    stats.pipeline_status = stats.proxy_used ? 'live_data_via_proxy' : 'live_data_via_direct';
+  } else if (!stats.proxy_used && stats.html_sources_used.length === 0 && !stats.soap_endpoint_reachable) {
+    stats.pipeline_status = 'no_proxy_configured_and_direct_blocked';
   } else {
     stats.pipeline_status = 'no_notices_in_period';
   }
@@ -245,7 +271,62 @@ function runElwisDiagnose() {
 }
 
 // ---------------------------------------------------------------------------
-// HTML SCRAPER (primary source — SOAP is blocked from Apps Script)
+// CLOUDFLARE WORKER PROXY (bypass for ELWIS POST WAF block)
+// ---------------------------------------------------------------------------
+
+/**
+ * Calls the optional Cloudflare Worker proxy that forwards SOAP requests
+ * to nts40.elwis.de. Returns:
+ *   - { configured: false } if proxy URL not in Script properties
+ *   - { ok: true,  messages: [...] } on success (combined across types)
+ *   - { ok: false, configured: true, error: "..." } on failure
+ *
+ * Configure via Project Settings → Script properties:
+ *   ELWIS_PROXY_URL      https://<worker>.workers.dev
+ *   ELWIS_PROXY_API_KEY  (optional) matches wrangler secret PROXY_API_KEY
+ */
+function fetchElwisViaProxy_(messageTypes, daysBack) {
+  var props = PropertiesService.getScriptProperties();
+  var base = String(props.getProperty('ELWIS_PROXY_URL') || '').trim();
+  if (!base) return { configured: false };
+  var apiKey = String(props.getProperty('ELWIS_PROXY_API_KEY') || '').trim();
+
+  base = base.replace(/\/$/, '');
+  var typesParam = encodeURIComponent((messageTypes || ['FTM', 'WRM']).join(','));
+  var url = base + '/elwis/nts/multi?message_types=' + typesParam + '&days_back=' + (daysBack || 14);
+
+  var headers = { 'Accept': 'application/json' };
+  if (apiKey) headers['x-api-key'] = apiKey;
+
+  try {
+    var resp = UrlFetchApp.fetch(url, {
+      method: 'get',
+      muteHttpExceptions: true,
+      followRedirects: true,
+      headers: headers
+    });
+    var code = resp.getResponseCode();
+    var body = resp.getContentText('UTF-8') || '';
+    if (code !== 200) {
+      return { ok: false, configured: true, error: 'HTTP ' + code + ' ' + body.slice(0, 160) };
+    }
+    var data = JSON.parse(body);
+    if (!data || data.ok !== true) {
+      return { ok: false, configured: true, error: 'proxy returned ok=false' };
+    }
+    var combined = [];
+    Object.keys(data.results || {}).forEach(function(t) {
+      var r = data.results[t];
+      if (r && r.ok && r.messages) combined.push.apply(combined, r.messages);
+    });
+    return { ok: true, configured: true, messages: combined, total_count: combined.length };
+  } catch (e) {
+    return { ok: false, configured: true, error: ((e && e.message) || e) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// HTML SCRAPER (secondary — SOAP is blocked from Apps Script)
 // ---------------------------------------------------------------------------
 
 /**
