@@ -176,7 +176,30 @@ Every handoff between agents must be recorded in a handoff file. Handoff files m
 
 ---
 
-## 8. Governance Review Schedule
+## 8. Token Optimization — Default Practices (Mandatory)
+
+Every agent runtime, integration, or workflow operating against this
+repository must apply the token-optimization defaults below. These are
+**enabled automatically** — opting out requires a documented exception and
+human approval per Section 9.
+
+| # | Default | Where enforced |
+|---|---|---|
+| D-1 | Prompt caching enabled on every Claude call | Runtime / integration config |
+| D-2 | Token count measured locally before each model call | Runtime / pre-flight check |
+| D-3 | Prompt blocks > 4,000 tokens compressed before send | Pre-processing step |
+| D-4 | Recurring/scheduled workflows hit a semantic cache first | Workflow definition |
+| D-5 | All production model calls routed through a unified gateway | Runtime / integration config |
+| D-6 | Per-run cost and token usage logged for traceability | Runtime / observability |
+| D-7 | Reusable prompt blocks live in `automation/prompts/` and are referenced, not duplicated | Repo convention |
+| D-8 | Long source documents stay in `data/raw/` and are retrieved on demand, not pasted into prompts | Repo convention + RAG |
+
+Reference repositories that implement these defaults are catalogued in
+`docs/integrations/external-repositories.md` (Sections 3.9 and 4).
+
+---
+
+## 9. Governance Review Schedule
 
 These governance documents must be reviewed:
 

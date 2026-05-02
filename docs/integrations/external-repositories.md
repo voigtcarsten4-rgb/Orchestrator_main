@@ -2,10 +2,14 @@
 
 ## Useful GitHub Repositories for the Orchestrator System
 
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Reference only — listing does not imply integration or activation
 **Owner:** Integration Planning Agent (A-15)
 **Last Reviewed:** 2026-05-02
+
+> **Central node:** This list orbits `voigtcarsten4-rgb/Orchestrator_main` —
+> the master orchestration repository. Every entry below is evaluated against
+> its domains, governance, and approval model.
 
 ---
 
@@ -34,6 +38,10 @@ separate entry in `docs/integrations/integration-roadmap.md` and approval per
 | Workflow & Automation Platforms | Candidates for INT-10 cloud orchestration |
 | Prompt Engineering & Evaluation | Aligns with `automation/prompts/` governance |
 | Knowledge / RAG / Vector Stores | Powers website extraction & content workflows |
+| Token Optimization & Cost Control | Mandatory by default — caching, compression, gateways |
+| Agent Runtimes & Coding Agents | Alternative or complementary runtimes to the current setup |
+| Human-in-the-Loop Tooling | Reinforces the approval model and draft-before-send rule |
+| Sandboxed Execution | Safe execution of agent-generated code |
 
 ---
 
@@ -343,7 +351,209 @@ separate entry in `docs/integrations/integration-roadmap.md` and approval per
 
 ---
 
-## 4. Adding a New Repository
+### 3.9 Token Optimization & Cost Control
+
+These repositories address token usage directly. Per Section 4 below, the
+techniques they implement (caching, compression, gateway-level routing) are
+**enabled by default** in any new agent runtime or workflow connected to
+`Orchestrator_main`.
+
+#### R-25 — LLMLingua
+
+| Property | Value |
+|---|---|
+| Repository | `microsoft/LLMLingua` |
+| URL | https://github.com/microsoft/LLMLingua |
+| Domain | Prompt compression |
+| Why it matters | Compresses long prompts (up to 20×) with minimal quality loss; directly cuts input tokens for the largest workflows (Website Extraction, Daily Briefing). |
+| Risk Level | Low |
+| Status | Reference — recommended default for >4k-token prompts |
+| Default usage rule | Apply to any prompt block longer than 4,000 tokens before sending |
+
+#### R-26 — GPTCache
+
+| Property | Value |
+|---|---|
+| Repository | `zilliztech/GPTCache` |
+| URL | https://github.com/zilliztech/GPTCache |
+| Domain | Semantic LLM response cache |
+| Why it matters | Caches semantically similar requests; eliminates duplicate-call cost for repeated prompts in scheduled workflows. |
+| Risk Level | Low–Medium (cache poisoning if not bounded) |
+| Status | Reference — recommended default for any scheduled/recurring workflow |
+| Default usage rule | Enabled for all workflow runs that fire more than once per day |
+
+#### R-27 — LiteLLM
+
+| Property | Value |
+|---|---|
+| Repository | `BerriAI/litellm` |
+| URL | https://github.com/BerriAI/litellm |
+| Domain | Unified LLM gateway with caching, retries, fallbacks |
+| Why it matters | One proxy for all model calls; centralizes prompt caching, cost tracking, and rate limiting — matches the documentation-first / single-source-of-truth principle. |
+| Risk Level | Medium (proxy is on the critical path) |
+| Status | Candidate — strong fit for the orchestrator's runtime layer |
+| Default usage rule | Route all production agent calls through the gateway when activated |
+
+#### R-28 — Helicone
+
+| Property | Value |
+|---|---|
+| Repository | `Helicone/helicone` |
+| URL | https://github.com/Helicone/helicone |
+| Domain | LLM observability + caching |
+| Why it matters | Adds traceability and per-prompt cost reporting — supports the traceability principle. |
+| Risk Level | Low |
+| Status | Reference |
+
+#### R-29 — Langfuse
+
+| Property | Value |
+|---|---|
+| Repository | `langfuse/langfuse` |
+| URL | https://github.com/langfuse/langfuse |
+| Domain | LLM tracing, evaluation, cost analytics |
+| Why it matters | End-to-end traces per workflow run; pairs with `automation/prompts/` for prompt-level cost attribution. |
+| Risk Level | Low–Medium |
+| Status | Reference |
+
+#### R-30 — Portkey AI Gateway
+
+| Property | Value |
+|---|---|
+| Repository | `Portkey-AI/gateway` |
+| URL | https://github.com/Portkey-AI/gateway |
+| Domain | LLM gateway with caching, fallbacks, guardrails |
+| Why it matters | Alternative to LiteLLM with strong guardrail support — useful if Portkey-style policy enforcement is preferred. |
+| Risk Level | Medium |
+| Status | Reference |
+
+#### R-31 — tiktoken
+
+| Property | Value |
+|---|---|
+| Repository | `openai/tiktoken` |
+| URL | https://github.com/openai/tiktoken |
+| Domain | Fast BPE tokenizer |
+| Why it matters | Local token counting before any model call — required to enforce the "compress if > 4k tokens" default. |
+| Risk Level | Low |
+| Status | Reference — recommended utility |
+
+---
+
+### 3.10 Agent Runtimes & Coding Agents
+
+#### R-32 — OpenHands (formerly OpenDevin)
+
+| Property | Value |
+|---|---|
+| Repository | `All-Hands-AI/OpenHands` |
+| URL | https://github.com/All-Hands-AI/OpenHands |
+| Domain | Autonomous coding/agent runtime |
+| Why it matters | Reference open-source runtime for end-to-end task execution; useful comparison for the orchestrator's agent model. |
+| Risk Level | Medium |
+| Status | Reference |
+
+#### R-33 — Microsoft Semantic Kernel
+
+| Property | Value |
+|---|---|
+| Repository | `microsoft/semantic-kernel` |
+| URL | https://github.com/microsoft/semantic-kernel |
+| Domain | Orchestration SDK (Python/.NET) |
+| Why it matters | Mature orchestration primitives (planners, plugins, memory) — direct conceptual overlap with `docs/orchestration/`. |
+| Risk Level | Low |
+| Status | Reference |
+
+#### R-34 — Pydantic AI
+
+| Property | Value |
+|---|---|
+| Repository | `pydantic/pydantic-ai` |
+| URL | https://github.com/pydantic/pydantic-ai |
+| Domain | Typed, schema-first agent framework |
+| Why it matters | Strong fit for the documentation-first principle: typed I/O contracts for every agent. |
+| Risk Level | Low |
+| Status | Reference |
+
+#### R-35 — smolagents
+
+| Property | Value |
+|---|---|
+| Repository | `huggingface/smolagents` |
+| URL | https://github.com/huggingface/smolagents |
+| Domain | Minimal agent framework |
+| Why it matters | Tiny code surface — useful when a single-purpose agent (e.g., A-04 Email Triage) needs to be implemented quickly without heavy dependencies. |
+| Risk Level | Low |
+| Status | Reference |
+
+#### R-36 — Goose
+
+| Property | Value |
+|---|---|
+| Repository | `block/goose` |
+| URL | https://github.com/block/goose |
+| Domain | On-machine AI agent CLI |
+| Why it matters | Local-first agent runtime; aligns with INT-03 and the "no auto-commit, human-reviewed" stance. |
+| Risk Level | Low |
+| Status | Reference |
+
+---
+
+### 3.11 Human-in-the-Loop Tooling
+
+#### R-37 — HumanLayer
+
+| Property | Value |
+|---|---|
+| Repository | `humanlayer/humanlayer` |
+| URL | https://github.com/humanlayer/humanlayer |
+| Domain | Approval / review layer for autonomous agents |
+| Why it matters | Direct match for `docs/governance/approval-model.md` — adds programmatic approval gates without rebuilding them. |
+| Risk Level | Low |
+| Status | Strong candidate — mirrors existing governance |
+
+---
+
+### 3.12 Sandboxed Execution
+
+#### R-38 — E2B
+
+| Property | Value |
+|---|---|
+| Repository | `e2b-dev/e2b` |
+| URL | https://github.com/e2b-dev/e2b |
+| Domain | Secure sandboxes for AI-generated code |
+| Why it matters | Required for any future workflow that executes agent-generated code; matches the "safe-by-default" principle. |
+| Risk Level | Medium |
+| Status | Reference — pre-requisite for any code-execution workflow |
+
+---
+
+## 4. Default Practices — Token Optimization (Mandatory)
+
+Token optimization is **not optional** for any agent runtime or workflow that
+runs against `Orchestrator_main`. The following defaults apply automatically
+and must be enabled in every new integration unless an explicit, documented
+exception is approved.
+
+| # | Default | Mechanism | Repos |
+|---|---|---|---|
+| D-1 | Prompt caching enabled on every Claude call | Anthropic prompt-caching headers | R-11, R-12 |
+| D-2 | Token count measured before send | Local tokenizer | R-31 |
+| D-3 | Prompts > 4,000 tokens compressed | LLMLingua | R-25 |
+| D-4 | Recurring/scheduled workflows hit a semantic cache first | GPTCache | R-26 |
+| D-5 | All production model calls routed through a gateway | LiteLLM or Portkey | R-27, R-30 |
+| D-6 | Per-run cost + token usage logged for traceability | Langfuse / Helicone | R-28, R-29 |
+| D-7 | Reusable prompt blocks live in `automation/prompts/` and are referenced, not duplicated | Repo convention | — |
+| D-8 | Long source documents stored in `data/raw/` and retrieved on demand, not pasted into prompts | Repo convention + RAG (R-22, R-23, R-24) | R-22, R-23, R-24 |
+
+Exceptions to any default require a note in the relevant integration entry in
+`docs/integrations/integration-roadmap.md` and sign-off per
+`docs/governance/approval-model.md`.
+
+---
+
+## 5. Adding a New Repository
 
 To add a repository to this list:
 
@@ -356,7 +566,7 @@ To add a repository to this list:
 
 ---
 
-## 5. Removal Policy
+## 6. Removal Policy
 
 A repository is removed from this list when:
 
