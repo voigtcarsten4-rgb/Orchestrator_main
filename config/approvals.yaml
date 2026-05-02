@@ -89,6 +89,91 @@ workflow_gates:
     level: ELEVATED
     description: "Reports for external distribution require elevated human approval before sharing"
 
+  W-13_strategy_artifact:
+    level: GATE
+    description: "Human reviews strategy briefing / OKR / decision memo / foresight scan before any use"
+    what_to_review:
+      - Recommendation reasoning
+      - Decision asks and trade-offs
+      - Confidence markers and assumptions
+
+  W-13_external_distribution:
+    level: ELEVATED
+    description: "Strategy artifact intended for board / investors / external audience requires elevated approval"
+
+  W-14_sales_drafts:
+    level: GATE
+    description: "Human reviews lead scores, hygiene report, briefings, and follow-up drafts"
+    note: "Outbound messages require per-message or per-batch approval before any send"
+
+  W-14_crm_writes:
+    level: GATE
+    description: "Any CRM write (stage change, field update) requires explicit human approval"
+
+  W-15_finance_drafts:
+    level: GATE
+    description: "Human reviews finance summary, reconciliation, dispute log, and anomaly report"
+
+  W-15_money_movement:
+    level: ELEVATED
+    description: "Refund / credit / write-off requires explicit per-item human approval; human executes in billing system"
+    note: "A-18 NEVER initiates any money movement"
+
+  W-16_marketing_drafts:
+    level: GATE
+    description: "Human reviews rankings, content gaps, mentions digest, link analytics, briefs"
+    note: "Approved briefs activate work in A-08; flagged risks may require escalation"
+
+  W-17_design_drafts:
+    level: GATE
+    description: "Human reviews brand audits, renders, briefs, and drift reports"
+
+  W-17_brand_rule_change:
+    level: ELEVATED
+    description: "Any change to brand rules requires explicit human approval; A-20 only recommends"
+
+  W-18_legal_drafts:
+    level: GATE
+    description: "Human reviews contract drafts, clause comparisons, signature status, inbound memos"
+    what_to_review:
+      - Every deviation from approved templates
+      - Every [NEW CLAUSE — COUNSEL REVIEW] flag
+      - Every commercial deviation flagged
+
+  W-18_contract_send:
+    level: ELEVATED
+    description: "Each contract send requires explicit per-document elevated approval; A-21 NEVER sends"
+    note: "A-21 never signs and never sends. Human executes all sends."
+
+  W-19_research_brief:
+    level: GATE
+    description: "Human reviews brief and evidence file before downstream agent uses findings"
+    what_to_review:
+      - Confidence markers and citations
+      - Open-questions list
+      - Any [CONFLICT] entries
+
+  W-19_paid_source:
+    level: ELEVATED
+    description: "Use of paid research source requires pre-approval before any spend"
+
+  W-20_social_drafts:
+    level: GATE
+    description: "Human reviews calendar, post drafts, engagement queue, analytics, trends"
+    note: "No auto-publish, ever. Approved posts queue for human-led publish."
+
+  W-20_sensitive_topic:
+    level: ELEVATED
+    description: "Controversial or sensitive trend / topic requires explicit human approval before drafting"
+
+  W-21_personal_drafts:
+    level: GATE
+    description: "Human reviews day plan, itinerary, household list, admin reminders, learning digest"
+
+  W-21_travel_booking:
+    level: ELEVATED
+    description: "Each travel booking requires explicit human approval per booking; A-24 NEVER books"
+
 # ─── Output-Level Approvals ───────────────────────────────────────────────────
 
 output_approvals:
@@ -113,6 +198,37 @@ output_approvals:
       - linkedin_drafts
       - business_communications
       - calendar_events
+      - social_media_posts
+      - sales_outbound_messages
+      - contracts_to_counterparty
+
+  payment_or_subscription_action:
+    level: BLOCKED
+    description: "No payment, refund, chargeback, or subscription change is auto-permitted; human executes in billing system"
+    applies_to:
+      - stripe_payment_actions
+      - stripe_subscription_changes
+      - any_billing_write_operation
+
+  contract_send_or_signature:
+    level: BLOCKED
+    description: "Sending a contract or signing on behalf of the company is never auto-permitted"
+    applies_to:
+      - contract_dispatch
+      - signature_application
+
+  travel_booking:
+    level: BLOCKED
+    description: "Travel bookings (flight, hotel, ground) are never auto-initiated; human books"
+
+  personal_data_cross_boundary:
+    level: BLOCKED
+    description: "Personal data under /data/*/personal/ may never be written into business folders or business reports"
+    applies_to:
+      - business_briefings
+      - operations_summaries
+      - strategy_artifacts
+    note: "A-24 enforces this boundary; violation is a governance incident"
 
 # ─── System-Level Approvals ───────────────────────────────────────────────────
 
