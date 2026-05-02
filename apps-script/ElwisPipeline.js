@@ -344,6 +344,111 @@ function findElwisBlockEnd_(html, pos) {
 }
 
 /**
+ * Probe whether www.elwis.de accepts POST/GET form submissions to fetch
+ * actual NfB notice rows. Static NfB HTML is just an empty search form —
+ * results are loaded after submission. Tries multiple variants.
+ */
+function runElwisFormProbe() {
+  var report = [];
+  var nfbUrl = 'https://www.elwis.de/DE/dynamisch/Nfb/';
+
+  // 1) POST form with default date range (last 30 days)
+  var now = new Date();
+  var from = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
+  var fmtDe = function(d) { return Utilities.formatDate(d, 'Europe/Berlin', 'dd.MM.yyyy'); };
+
+  function dateInfo(body) {
+    var dates = body.match(/\b\d{2}\.\d{2}\.\d{4}\b/g) || [];
+    var unique = {};
+    dates.forEach(function(d) { unique[d] = (unique[d] || 0) + 1; });
+    var distinct = Object.keys(unique).length;
+    return 'dates=' + dates.length + ' distinct=' + distinct + ' sample=' + dates.slice(0, 5).join(',');
+  }
+
+  // 1a: POST application/x-www-form-urlencoded (object payload)
+  try {
+    var t0 = Date.now();
+    var r = UrlFetchApp.fetch(nfbUrl, {
+      method: 'post',
+      payload: {
+        'search_nfb[gueltigVon]': fmtDe(from),
+        'search_nfb[gueltigBis]': fmtDe(now),
+        'search_nfb[search]': 'submit'
+      },
+      muteHttpExceptions: true,
+      followRedirects: true,
+      headers: { 'Accept': 'text/html,*/*;q=0.8', 'Referer': nfbUrl }
+    });
+    var b = r.getContentText('UTF-8') || '';
+    report.push('1a POST form-urlencoded  ' + (Date.now() - t0) + 'ms HTTP ' + r.getResponseCode() + ' bytes=' + b.length + '  ' + dateInfo(b));
+  } catch (e) { report.push('1a ERROR ' + ((e && e.message) || e)); }
+
+  // 1b: POST same fields without trailing [search]=submit
+  try {
+    var r2 = UrlFetchApp.fetch(nfbUrl, {
+      method: 'post',
+      payload: {
+        'search_nfb[gueltigVon]': fmtDe(from),
+        'search_nfb[gueltigBis]': fmtDe(now)
+      },
+      muteHttpExceptions: true,
+      followRedirects: true,
+      headers: { 'Referer': nfbUrl }
+    });
+    var b2 = r2.getContentText('UTF-8') || '';
+    report.push('1b POST minimal  HTTP ' + r2.getResponseCode() + ' bytes=' + b2.length + '  ' + dateInfo(b2));
+  } catch (e) { report.push('1b ERROR ' + ((e && e.message) || e)); }
+
+  // 2) GET with query string
+  try {
+    var qs = '?' + 'search_nfb%5BgueltigVon%5D=' + encodeURIComponent(fmtDe(from)) +
+             '&search_nfb%5BgueltigBis%5D=' + encodeURIComponent(fmtDe(now)) +
+             '&search_nfb%5Bsearch%5D=submit';
+    var r3 = UrlFetchApp.fetch(nfbUrl + qs, { muteHttpExceptions: true, followRedirects: true });
+    var b3 = r3.getContentText('UTF-8') || '';
+    report.push('2 GET querystring  HTTP ' + r3.getResponseCode() + ' bytes=' + b3.length + '  ' + dateInfo(b3));
+  } catch (e) { report.push('2 ERROR ' + ((e && e.message) || e)); }
+
+  // 3) Probe alternative ELWIS URLs that might serve actual notice content
+  //    without requiring form submit.
+  var alt = [
+    'https://www.elwis.de/DE/dynamisch/Nfb/Nfb_Liste.html',
+    'https://www.elwis.de/DE/dynamisch/Nfb/index.html',
+    'https://www.elwis.de/DE/dynamisch/Nfb/?aktuell=1',
+    'https://www.elwis.de/DE/Service/Suche/suche_node.html?search=schleusensperrung',
+    'https://www.elwis.de/DE/dynamisch/Nfb/aktuelle.html',
+    'https://www.elwis.de/DE/dynamisch/Nfb/Nfb.json',
+    'https://www.elwis.de/DE/Schifffahrtsinformationen/aktuelle-Meldungen.html'
+  ];
+  alt.forEach(function(url) {
+    try {
+      var r4 = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
+      var b4 = r4.getContentText('UTF-8') || '';
+      report.push('3 GET alt  HTTP ' + r4.getResponseCode() + ' bytes=' + b4.length + '  ' + dateInfo(b4) + '  ' + url);
+    } catch (e) {
+      report.push('3 ERROR ' + ((e && e.message) || e) + '  ' + url);
+    }
+  });
+
+  // 4) Look for inline news on the homepage (some GSB sites surface latest items there)
+  try {
+    var rh = UrlFetchApp.fetch('https://www.elwis.de/', { muteHttpExceptions: true, followRedirects: true });
+    var bh = rh.getContentText('UTF-8') || '';
+    var clean = bh.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ');
+    // Find headlines + look for a "Meldung", "aktuell", "Hinweis" section
+    var headlines = (clean.match(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/gi) || []).slice(0, 12);
+    report.push('4 homepage bytes=' + bh.length + '  ' + dateInfo(bh) + '  headlines:');
+    headlines.forEach(function(h) {
+      var t = h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (t) report.push('   - ' + t.slice(0, 120));
+    });
+  } catch (e) { report.push('4 homepage ERROR ' + ((e && e.message) || e)); }
+
+  Logger.log('[ELWIS-FORM-PROBE]\n' + report.join('\n'));
+  return report;
+}
+
+/**
  * Editor-Hilfe: zeigt für NfB + Schleusensperrungen die ECHTEN
  * 250-Zeichen-Kontexte rund um jedes gefundene Datum. Damit lässt sich
  * sehen, in welchem Markup-Block die Notices stecken — falls der Extractor
