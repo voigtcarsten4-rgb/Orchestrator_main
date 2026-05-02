@@ -44,7 +44,9 @@ function fetchAndStoreElwisNotices_() {
   const messageTypes = ['FTM', 'WRM'];
   const stats = {
     fetched: 0, parsed: 0, written: 0, updated: 0,
-    skipped: 0, errors: []
+    skipped: 0, errors: [],
+    sheet_rows_before: Object.keys(existing).length,
+    endpoint_reachable: null
   };
   const allNotices = [];
 
@@ -55,6 +57,7 @@ function fetchAndStoreElwisNotices_() {
         stats.errors.push(msgType + ': empty response');
         return;
       }
+      stats.endpoint_reachable = true;
       var elements = parseElwisResponse_(xml);
       stats.fetched += elements.length;
       for (var i = 0; i < elements.length; i++) {
@@ -71,15 +74,44 @@ function fetchAndStoreElwisNotices_() {
     }
   });
 
-  if (allNotices.length === 0 && sheet.getLastRow() <= 1) {
+  if (stats.endpoint_reachable === null) stats.endpoint_reachable = false;
+
+  // Robust demo-seed: greift bei leerem Sheet (kein notice_uid-Eintrag)
+  // unabhängig davon, ob noch Reste aus einer alten Schemaversion in
+  // sheet.getLastRow() stecken.
+  if (allNotices.length === 0 && stats.sheet_rows_before === 0) {
     seedElwisDemoRow_(sheet);
-    Logger.log('[ELWIS-PIPE] Demo-Row eingefügt (Pipeline ok, keine echten Daten).');
+    stats.demo_seeded = true;
+    Logger.log('[ELWIS-PIPE] Demo-Row eingefügt (Pipeline ok, ELWIS-Endpoint unreachable oder leer).');
   } else if (allNotices.length > 0) {
     upsertElwisNotices_(sheet, allNotices, existing, stats);
   }
 
   Logger.log('[ELWIS-PIPE] DONE ' + JSON.stringify(stats));
   return stats;
+}
+
+/**
+ * Diagnose-Helper: testet die ELWIS-Endpoint-Erreichbarkeit isoliert.
+ * Editor-Aufruf: gibt HTTP-Status / Fehlertext zurück, ohne Sheets anzufassen.
+ */
+function runElwisDiagnose() {
+  var endpoints = [
+    'https://nts40.elwis.de/server/web/MessageServer.php?wsdl',
+    'https://nts40.elwis.de/server/web/MessageServer.php',
+    'https://www.elwis.de/'
+  ];
+  var report = [];
+  endpoints.forEach(function(url) {
+    try {
+      var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
+      report.push(url + ' → HTTP ' + resp.getResponseCode());
+    } catch (e) {
+      report.push(url + ' → ERROR: ' + ((e && e.message) || e));
+    }
+  });
+  Logger.log('[ELWIS-DIAG]\n' + report.join('\n'));
+  return report;
 }
 
 // ---------------------------------------------------------------------------
